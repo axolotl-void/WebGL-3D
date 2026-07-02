@@ -190,7 +190,7 @@ export default function InteractiveCube({ position, index, onClick }) {
           setHovered(false);
           document.body.style.cursor = 'default';
         }}
-        onClick={(e) => {
+        onPointerDown={(e) => {
           e.stopPropagation();
           if (onClick) onClick(index);
         }}

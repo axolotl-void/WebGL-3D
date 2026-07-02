@@ -80,6 +80,7 @@ useGLTF.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.5/'
 
 const SecondMountain = forwardRef((props, ref) => {
   const { scene } = useGLTF('/models/snowy_mountain_v2_-_terrain/scene_compressed.glb');
+  const groupRef = React.useRef();
   
   const clonedScene = useMemo(() => scene.clone(), [scene]);
 
@@ -94,8 +95,11 @@ const SecondMountain = forwardRef((props, ref) => {
     uGlowColor:      { value: new THREE.Color('#00ffff') },
   }), []);
 
-  // Mengekspos uniforms agar bisa diakses oleh SecondScene.jsx
-  React.useImperativeHandle(ref, () => ({ uniforms }), [uniforms]);
+  // Mengekspos uniforms dan group agar bisa diakses oleh parent scene
+  React.useImperativeHandle(ref, () => ({
+    uniforms,
+    group: groupRef.current
+  }), [uniforms]);
 
   // Pasang custom shader ke semua jaring (mesh) model ini
   useMemo(() => {
@@ -117,7 +121,7 @@ const SecondMountain = forwardRef((props, ref) => {
   });
 
   return (
-    <group position={[0, -2, -10]}>
+    <group ref={groupRef} position={[0, -2, -10]}>
       <Center>
         <primitive
           object={clonedScene}

@@ -102,13 +102,13 @@ const cubeFrag = /* glsl */`
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Build 12 pieces: 2×2×3 grid, each piece is a sub-box
+// Build 26 pieces: 3×3×3 grid (excluding the center-most piece), each piece is a sub-box
 // ─────────────────────────────────────────────────────────────────────────────
 const CUBE_SIZE = 6;
 const GAP = 0.06; // tiny seam between pieces when assembled
-const COLS_X = 2;
+const COLS_X = 3;
 const COLS_Y = 3;
-const COLS_Z = 2;
+const COLS_Z = 3;
 const PIECE_W = CUBE_SIZE / COLS_X;
 const PIECE_H = CUBE_SIZE / COLS_Y;
 const PIECE_D = CUBE_SIZE / COLS_Z;
@@ -118,13 +118,14 @@ const pieces = [];
 for (let iy = 0; iy < COLS_Y; iy++) {
   for (let ix = 0; ix < COLS_X; ix++) {
     for (let iz = 0; iz < COLS_Z; iz++) {
+      // Skip the center piece of the 3x3x3 grid so the inner glowing core is visible
+      if (ix === 1 && iy === 1 && iz === 1) continue;
+      
       const cx = (ix - (COLS_X - 1) / 2) * (PIECE_W + GAP);
       const cy = (iy - (COLS_Y - 1) / 2) * (PIECE_H + GAP);
       const cz = (iz - (COLS_Z - 1) / 2) * (PIECE_D + GAP);
       // Explode direction = normalized offset from center (with some extra push)
       const dir = new THREE.Vector3(cx, cy, cz).normalize();
-      // ponytail: if piece is at center (0,0,0), give it a random direction
-      if (dir.length() === 0) dir.set(0, 1, 0);
       pieces.push({ cx, cy, cz, dir });
     }
   }
