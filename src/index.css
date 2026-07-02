@@ -1,0 +1,46 @@
+:root {
+  --bg-primary: #020a17;
+  --bg-secondary: rgba(2, 10, 23, 0.7);
+  --accent-cyan: #00d2ff;
+  --accent-blue: #0066ff;
+  --accent-glow: rgba(0, 210, 255, 0.45);
+  --text-main: #e2f1ff;
+  --text-muted: #8da4c4;
+  --font-display: 'Orbitron', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --border-glow: rgba(0, 210, 255, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+html, body, #root {
+  width: 100%;
+  min-height: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar for HUD scrollable container */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(2, 10, 23, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent-cyan);
+  box-shadow: 0 0 10px var(--accent-glow);
+  border-radius: 2px;
+}
+
+/* Hide standard cursor and define interactive hover styling if needed */
+body {
+  cursor: default;
+}
