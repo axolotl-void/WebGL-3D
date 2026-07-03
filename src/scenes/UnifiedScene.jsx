@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Stars, OrbitControls } from '@react-three/drei';
+import { Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import TechCube from '../components/TechCube';
 import SnowyMountain from '../components/SnowyMountain';
@@ -68,6 +68,11 @@ function ParticleField({ count = 250 }) {
 
 const ZONE2_Z = -45;
 
+// Hardcoded portal coordinates chosen by the user
+const PORTAL_POS = [3.50, -3.10, -7.05];
+const PORTAL_SCALE = 0.0060;
+const PORTAL_ROT_Y = 4.60;
+
 export default function UnifiedScene() {
   const { camera } = useThree();
   const cubeGroupRef = useRef();
@@ -75,106 +80,6 @@ export default function UnifiedScene() {
   const secondMountainRef = useRef();
   const zone1Ref = useRef();
   const zone2Ref = useRef();
-
-  const [portalEditorPos, setPortalEditorPos] = useState([1.5, -3.1, -9.5]);
-  const [portalEditorScale, setPortalEditorScale] = useState(0.018);
-  const [portalEditorRotY, setPortalEditorRotY] = useState(-0.7);
-  const [isFreeCam, setIsFreeCam] = useState(false);
-
-  // Temporary Portal Editor controls
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const step = 0.05;
-      const scaleStep = 0.0005;
-      const rotStep = 0.05;
-      
-      setPortalEditorPos((prev) => {
-        const next = [...prev];
-        switch (e.key.toLowerCase()) {
-          case 'a': // Move left (X-)
-          case 'arrowleft':
-            next[0] -= step;
-            break;
-          case 'd': // Move right (X+)
-          case 'arrowright':
-            next[0] += step;
-            break;
-          case 'w': // Move further (Z-)
-          case 'arrowup':
-            next[2] -= step;
-            break;
-          case 's': // Move closer (Z+)
-          case 'arrowdown':
-            next[2] += step;
-            break;
-          case 'q': // Move down (Y-)
-            next[1] -= step;
-            break;
-          case 'e': // Move up (Y+)
-            next[1] += step;
-            break;
-        }
-        return next;
-      });
-
-      if (e.key === '[' || e.key === '{' || e.key === '-' || e.key === '_') {
-        setPortalEditorScale((prev) => Math.max(0.001, prev - scaleStep));
-      } else if (e.key === ']' || e.key === '}') {
-        setPortalEditorScale((prev) => prev + scaleStep);
-      } else if (e.key === '=' || e.key === '+') {
-        setPortalEditorScale((prev) => prev + scaleStep * 2.0);
-      } else if (e.key.toLowerCase() === 'r') {
-        setPortalEditorRotY((prev) => prev + rotStep);
-      } else if (e.key.toLowerCase() === 'f') {
-        setPortalEditorRotY((prev) => prev - rotStep);
-      } else if (e.key.toLowerCase() === 'c') {
-        setIsFreeCam((prev) => !prev);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Render temporary Portal Editor HUD overlay
-  useEffect(() => {
-    const hud = document.createElement('div');
-    hud.id = 'portal-editor-hud';
-    hud.style.position = 'fixed';
-    hud.style.bottom = '20px';
-    hud.style.left = '20px';
-    hud.style.padding = '15px';
-    hud.style.background = 'rgba(2, 10, 23, 0.85)';
-    hud.style.color = '#00ffcc';
-    hud.style.fontFamily = 'monospace';
-    hud.style.fontSize = '12px';
-    hud.style.borderRadius = '5px';
-    hud.style.border = '1px solid #00bbff';
-    hud.style.zIndex = '999999';
-    hud.style.pointerEvents = 'auto';
-    hud.style.boxShadow = '0 0 15px rgba(0, 187, 255, 0.3)';
-    
-    document.body.appendChild(hud);
-    return () => hud.remove();
-  }, []);
-
-  // Update HUD text on state change
-  useEffect(() => {
-    const hud = document.getElementById('portal-editor-hud');
-    if (!hud) return;
-    hud.innerHTML = `
-      <div style="font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #00bbff; padding-bottom: 4px;">PORTAL LEVEL EDITOR</div>
-      <div>Position: [${portalEditorPos[0].toFixed(2)}, ${portalEditorPos[1].toFixed(2)}, ${portalEditorPos[2].toFixed(2)}]</div>
-      <div>Scale: ${portalEditorScale.toFixed(4)}</div>
-      <div>Rotation Y: ${portalEditorRotY.toFixed(2)} rad</div>
-      <div style="margin-top: 8px; border-top: 1px dashed rgba(0, 187, 255, 0.4); padding-top: 4px; color: #88aaff;">
-        Move: A/D (X), W/S (Z), Q/E (Y)<br/>
-        Scale: [ / ] or - / + (minus/plus)<br/>
-        Rotate Y: R / F<br/>
-        Toggle Free Cam: C (${isFreeCam ? 'ACTIVE' : 'INACTIVE'})
-      </div>
-    `;
-  }, [portalEditorPos, portalEditorScale, portalEditorRotY, isFreeCam]);
 
   const scrollRef = useRef(0);
   const targetScrollRef = useRef(0);
@@ -333,55 +238,61 @@ export default function UnifiedScene() {
       const startPos = zone2Positions[zone2Positions.length - 1];
       const startRot = zone2Quaternions[zone2Quaternions.length - 1];
       
-      // Portal is located at local portalEditorPos relative to ZONE2_Z = -45
-      // World center of portal gate opening scales with portal scale
-      const openingY = portalEditorPos[1] + 2.0 * (portalEditorScale / 0.018);
+      // Portal center is at PORTAL_POS[1] + torus world radius (2.0)
+      const openingY = PORTAL_POS[1] + 2.0;
       const portalCenterPos = new THREE.Vector3(
-        portalEditorPos[0],
+        PORTAL_POS[0],
         openingY,
-        portalEditorPos[2] + ZONE2_Z
+        PORTAL_POS[2] + ZONE2_Z
       );
       
-      // Calculate forward direction of portal based on its Y rotation (portalEditorRotY)
-      // Default portal faces along positive Z
-      const forwardX = Math.sin(portalEditorRotY) * 1.5;
-      const forwardZ = Math.cos(portalEditorRotY) * 1.5;
+      // Calculate normal direction of the portal
+      const forwardX = Math.sin(PORTAL_ROT_Y) * 2.0;
+      const forwardZ = Math.cos(PORTAL_ROT_Y) * 2.0;
       
-      // Pass slightly through the portal vortex along its normal
+      // Pass through the portal to the back side (subtract normal vector since it points towards camera)
       const portalPassPos = new THREE.Vector3(
-        portalEditorPos[0] + forwardX,
+        PORTAL_POS[0] - forwardX,
         openingY,
-        portalEditorPos[2] + ZONE2_Z + forwardZ
+        PORTAL_POS[2] + ZONE2_Z - forwardZ
       );
       
       targetPos.lerpVectors(startPos, portalPassPos, ease(t));
       
-      // Face the portal directly as we enter it
+      // ponytail: add a vertical arc to fly over the mountain ridge and swoop down into the portal
+      const heightOffset = Math.sin(t * Math.PI) * 4.5;
+      targetPos.y += heightOffset;
+      
+      // Face forward towards a target far behind the portal so the camera never spins around when crossing the plane
+      const farLookTarget = new THREE.Vector3(
+        PORTAL_POS[0] - forwardX * 25.0,
+        openingY,
+        PORTAL_POS[2] + ZONE2_Z - forwardZ * 25.0
+      );
+      
       const lookMat = new THREE.Matrix4();
-      lookMat.lookAt(targetPos, portalCenterPos, new THREE.Vector3(0, 1, 0));
+      lookMat.lookAt(targetPos, farLookTarget, new THREE.Vector3(0, 1, 0));
       const lookRot = new THREE.Quaternion().setFromRotationMatrix(lookMat);
       
       targetRot.slerpQuaternions(startRot, lookRot, ease(t));
     }
 
-    if (!isFreeCam) {
-      if (introActive) {
-        // Dramatic swoop from above down to start position (0.0 scroll position)
-        const introPos = new THREE.Vector3(0, 25, 40);
-        const startLookTarget = new THREE.Vector3(0, 0, -12);
-        const mStart = new THREE.Matrix4();
-        mStart.lookAt(introPos, startLookTarget, new THREE.Vector3(0, 1, 0));
-        const introRot = new THREE.Quaternion().setFromRotationMatrix(mStart);
+    if (introActive) {
+      // Dramatic swoop from above down to start position (0.0 scroll position)
+      const introPos = new THREE.Vector3(0, 25, 40);
+      const startLookTarget = new THREE.Vector3(0, 0, -12);
+      const mStart = new THREE.Matrix4();
+      mStart.lookAt(introPos, startLookTarget, new THREE.Vector3(0, 1, 0));
+      const introRot = new THREE.Quaternion().setFromRotationMatrix(mStart);
 
-        camera.position.lerpVectors(introPos, targetPos, introEased);
-        camera.quaternion.slerpQuaternions(introRot, targetRot, introEased);
-      } else {
-        // Lerp camera position & quaternion for buttery smoothness
-        camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetPos.x + mouseX, 0.05);
-        camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetPos.y + mouseY, 0.05);
-        camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetPos.z, 0.05);
-        camera.quaternion.slerp(targetRot, 0.05);
-      }
+      camera.position.lerpVectors(introPos, targetPos, introEased);
+      camera.quaternion.slerpQuaternions(introRot, targetRot, introEased);
+    } else {
+      // Lerp camera position & quaternion for buttery smoothness
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetPos.x + mouseX, 0.05);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetPos.y + mouseY, 0.05);
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetPos.z, 0.05);
+      camera.quaternion.slerp(targetRot, 0.05);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -413,7 +324,7 @@ export default function UnifiedScene() {
     // ponytail: prevents GPU overheating by stopping background draw calls
     // ═══════════════════════════════════════════════════════════════════════
     if (zone1Ref.current) {
-      zone1Ref.current.visible = scroll < 0.24;
+      zone1Ref.current.visible = scroll < 0.30;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -445,13 +356,13 @@ export default function UnifiedScene() {
     // ponytail: prevents second mountain appearing as floating dot in Zone 1
     // ═══════════════════════════════════════════════════════════════════════
     if (zone2Ref.current) {
-      zone2Ref.current.visible = scroll > 0.24;
+      zone2Ref.current.visible = scroll > 0.18;
     }
     if (secondMountainRef.current?.uniforms) {
       const zone2Progress = Math.min(Math.max((scroll - 0.35) / (zone2EndScroll - 0.35), 0), 1);
       secondMountainRef.current.uniforms.uRevealProgress.value = zone2Progress;
       // Cap the camera Z value during the transition scroll phase to prevent bright cyan flashes
-      secondMountainRef.current.uniforms.uCameraZ.value = scroll >= 0.24 ? targetPos.z : -100.0;
+      secondMountainRef.current.uniforms.uCameraZ.value = scroll >= 0.18 ? targetPos.z : -100.0;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -493,17 +404,15 @@ export default function UnifiedScene() {
           />
         ))}
         <Portal 
-          position={portalEditorPos} 
-          scale={portalEditorScale}
-          rotation={[0, portalEditorRotY, 0]} 
+          position={PORTAL_POS} 
+          scale={PORTAL_SCALE}
+          rotation={[0, PORTAL_ROT_Y, 0]} 
         />
       </group>
 
       {/* ════════════ ZONE 2 ACCENT LIGHTING ════════════ */}
       <directionalLight position={[-15, 10, ZONE2_Z - 10]} intensity={3.5} color="#00ffff" />
       <directionalLight position={[15, 5, ZONE2_Z + 15]} intensity={2.5} color="#ff0055" />
-
-      {isFreeCam && <OrbitControls />}
     </>
   );
 }
