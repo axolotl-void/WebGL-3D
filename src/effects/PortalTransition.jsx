@@ -24,6 +24,11 @@ const fragmentShader = /* glsl */`
   void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     float p = uProgress;
 
+    if (p < 0.001) {
+      outputColor = inputColor;
+      return;
+    }
+
     vec2 center = vec2(0.5);
     vec2 toCenter = uv - center;
     float dist = length(toCenter);
@@ -77,9 +82,7 @@ const fragmentShader = /* glsl */`
     float vignette = 1.0 - dist * p * 0.6;
     color *= max(vignette, 0.2);
 
-    // Mix modified color back with the inputColor based on progress to avoid early returns and glitches
-    vec3 finalOut = mix(inputColor.rgb, color, smoothstep(0.0, 0.005, p));
-    outputColor = vec4(finalOut, 1.0);
+    outputColor = vec4(color, 1.0);
   }
 `;
 

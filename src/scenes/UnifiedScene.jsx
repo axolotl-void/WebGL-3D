@@ -238,17 +238,18 @@ export default function UnifiedScene() {
       const startPos = zone2Positions[zone2Positions.length - 1];
       const startRot = zone2Quaternions[zone2Quaternions.length - 1];
       
-      // Portal center is at PORTAL_POS[1] + torus world radius (2.0)
-      const openingY = PORTAL_POS[1] + 2.0;
+      // Portal center is at PORTAL_POS[1] + torus world radius
+      const portalScaleMultiplier = (PORTAL_SCALE / 0.006) * 0.8;
+      const openingY = PORTAL_POS[1] + portalScaleMultiplier;
       const portalCenterPos = new THREE.Vector3(
         PORTAL_POS[0],
         openingY,
         PORTAL_POS[2] + ZONE2_Z
       );
       
-      // Calculate normal direction of the portal
-      const forwardX = Math.sin(PORTAL_ROT_Y) * 2.0;
-      const forwardZ = Math.cos(PORTAL_ROT_Y) * 2.0;
+      // Calculate normal direction of the portal (scaled by portal size)
+      const forwardX = Math.sin(PORTAL_ROT_Y) * (1.5 * portalScaleMultiplier);
+      const forwardZ = Math.cos(PORTAL_ROT_Y) * (1.5 * portalScaleMultiplier);
       
       // Pass through the portal to the back side (subtract normal vector since it points towards camera)
       const portalPassPos = new THREE.Vector3(
@@ -259,8 +260,8 @@ export default function UnifiedScene() {
       
       targetPos.lerpVectors(startPos, portalPassPos, ease(t));
       
-      // ponytail: add a vertical arc to fly over the mountain ridge and swoop down into the portal
-      const heightOffset = Math.sin(t * Math.PI) * 4.5;
+      // ponytail: add a vertical arc to fly over the mountain ridge and swoop down into the portal (decays to 0 at the end to align with portal center)
+      const heightOffset = Math.sin(t * Math.PI) * 4.5 * (1.0 - t);
       targetPos.y += heightOffset;
       
       // Face forward towards a target far behind the portal so the camera never spins around when crossing the plane

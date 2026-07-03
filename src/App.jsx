@@ -1,7 +1,5 @@
 import { useEffect, useRef, Suspense, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import PortalTransition from './effects/PortalTransition';
 import gsap from 'gsap';
 import UnifiedScene from './scenes/UnifiedScene';
 import Navbar from './components/Navbar';
@@ -148,16 +146,6 @@ function App() {
             <UnifiedScene />
           </Suspense>
 
-          <EffectComposer>
-            <Bloom
-              intensity={0.7}
-              luminanceThreshold={0.4}
-              luminanceSmoothing={0.9}
-              mipmapBlur={true}
-              radius={0.65}
-            />
-            <PortalTransition />
-          </EffectComposer>
         </Canvas>
       </div>
 

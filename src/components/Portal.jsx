@@ -15,7 +15,7 @@ const vortexVert = /* glsl */ `
     vUv = uv;
     vNormal = normalize(normalMatrix * normal);
     vec4 wp = modelMatrix * vec4(position, 1.0);
-    vViewDir = normalize(cameraPosition - wp.xyz);
+    vViewDir = normalize(cameraPosition - wp.xyz + vec3(0.0001));
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
@@ -150,7 +150,7 @@ const ringFrag = /* glsl */ `
     col += purple * cross1;
 
     // Fresnel rim on the ring itself
-    vec3 viewDir = normalize(cameraPosition - vWorldPos);
+    vec3 viewDir = normalize(cameraPosition - vWorldPos + vec3(0.0001));
     float fresnel = pow(1.0 - abs(dot(normalize(vNormal), viewDir)), 2.5);
     col += cyan * fresnel * 1.2;
 
@@ -301,8 +301,8 @@ export default function Portal({ position = [0, 0, 0], rotation = [0, 0, 0], sca
   const groupRef = useRef();
 
   // ponytail: visual radius target ≈ 2.0 world units at scale=0.006 for dramatic presence
-  // s = (scale / 0.006) * 2.0
-  const s = (scale / 0.006) * 2.0;
+  // s = (scale / 0.006) * 0.8
+  const s = (scale / 0.006) * 0.8;
 
   // ── Vortex disc ──
   const vortexUniforms = useMemo(() => ({
