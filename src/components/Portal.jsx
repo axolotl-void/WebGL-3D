@@ -1,20 +1,148 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// GLSL: Orbiting Rune Particles
+// Doctor Strange Portal — Sling Ring Style
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const particleVert = /* glsl */ `
+// ── Fiery ring shader (main ring + inner rings) ──
+const ringVert = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vPos;
+  void main() {
+    vUv = uv;
+    vPos = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const ringFrag = /* glsl */ `
+  uniform float uTime;
+  uniform float uOpacity;
+  uniform float uSpeed;
+  uniform float uIntensity;
+
+  varying vec2 vUv;
+  varying vec3 vPos;
+
+  // Simple noise
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
+
+  void main() {
+    if (uOpacity < 0.001) discard;
+
+    // Convert UV to angular coordinates
+    float angle = atan(vPos.y, vPos.x);
+    float r = length(vPos.xy);
+
+    // Animated fire along the ring
+    float fire1 = noise(vec2(angle * 3.0 + uTime * uSpeed, r * 10.0 - uTime * 1.5));
+    float fire2 = noise(vec2(angle * 5.0 - uTime * uSpeed * 0.7, r * 15.0 + uTime * 2.0));
+    float fire3 = noise(vec2(angle * 8.0 + uTime * uSpeed * 1.3, r * 8.0));
+
+    float fire = fire1 * 0.5 + fire2 * 0.35 + fire3 * 0.15;
+
+    // Sparks — sharp bright spots
+    float sparkle = noise(vec2(angle * 20.0 + uTime * 4.0, r * 30.0));
+    sparkle = pow(max(sparkle - 0.75, 0.0) * 4.0, 3.0);
+
+    // Doctor Strange orange-gold palette
+    vec3 orange = vec3(1.0, 0.45, 0.0);
+    vec3 gold = vec3(1.0, 0.75, 0.2);
+    vec3 white = vec3(1.0, 0.95, 0.8);
+
+    vec3 color = mix(orange, gold, fire);
+    color += white * sparkle * 0.8;
+    color *= uIntensity;
+
+    float alpha = (fire * 0.7 + 0.3 + sparkle) * uOpacity;
+    alpha = clamp(alpha, 0.0, 1.0);
+
+    gl_FragColor = vec4(color, alpha);
+  }
+`;
+
+// ── Mandala / runic pattern shader ──
+const mandalaVert = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vPos;
+  void main() {
+    vUv = uv;
+    vPos = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const mandalaFrag = /* glsl */ `
+  uniform float uTime;
+  uniform float uOpacity;
+
+  varying vec2 vUv;
+  varying vec3 vPos;
+
+  #define PI 3.14159265
+
+  void main() {
+    if (uOpacity < 0.001) discard;
+
+    float angle = atan(vPos.y, vPos.x);
+    float r = length(vPos.xy);
+
+    // Runic segments — geometric mandala pattern
+    float segments = 12.0;
+    float segAngle = mod(angle + PI, 2.0 * PI / segments);
+    float segNorm = segAngle / (2.0 * PI / segments);
+
+    // Thin geometric lines
+    float line1 = abs(sin(segNorm * PI * 2.0));
+    line1 = smoothstep(0.92, 0.98, line1);
+
+    // Cross-hatch pattern
+    float line2 = abs(sin((segNorm + 0.5) * PI * 4.0));
+    line2 = smoothstep(0.95, 0.99, line2);
+
+    // Radial tick marks
+    float ticks = abs(sin(r * 30.0));
+    ticks = smoothstep(0.93, 0.97, ticks) * 0.5;
+
+    float pattern = max(line1, line2) + ticks;
+    pattern = clamp(pattern, 0.0, 1.0);
+
+    // Animate brightness
+    float pulse = sin(uTime * 2.0 + r * 10.0) * 0.3 + 0.7;
+
+    vec3 gold = vec3(1.0, 0.65, 0.1);
+    vec3 color = gold * pattern * pulse;
+
+    float alpha = pattern * pulse * uOpacity * 0.6;
+
+    gl_FragColor = vec4(color, alpha);
+  }
+`;
+
+// ── Spark particles shader ──
+const sparkVert = /* glsl */ `
   attribute float aAngle;
   attribute float aSpeed;
   attribute float aRadius;
   attribute float aPhase;
+  attribute float aLife;
 
   uniform float uTime;
-  uniform float uRingRadius;
 
   varying float vAlpha;
 
@@ -22,130 +150,100 @@ const particleVert = /* glsl */ `
     float t = uTime * aSpeed + aPhase;
     float a = aAngle + t;
 
-    // Orbit coordinates around the portal structure
+    // Orbit + outward drift (sparks fly off)
+    float drift = fract(t * 0.3) * 0.4;
+    float radius = aRadius + drift;
+
     vec3 pos = vec3(
-      cos(a) * aRadius * uRingRadius,
-      sin(a) * aRadius * uRingRadius + sin(t * 3.0) * 0.1,
-      sin(t * 2.0 + aPhase) * 0.15
+      cos(a) * radius,
+      sin(a) * radius + sin(t * 5.0) * 0.03,
+      sin(t * 3.0 + aPhase) * 0.08
     );
 
-    vAlpha = 0.4 + 0.6 * abs(sin(t * 5.0));
+    // Fade out as spark drifts outward
+    vAlpha = 1.0 - fract(t * 0.3);
+    vAlpha = pow(vAlpha, 0.5) * aLife;
 
     vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
-    gl_PointSize = (4.0 + 3.0 * sin(t * 4.0)) * (150.0 / -mvPos.z);
+    gl_PointSize = (2.0 + 2.0 * vAlpha) * (120.0 / -mvPos.z);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
 
-const particleFrag = /* glsl */ `
+const sparkFrag = /* glsl */ `
   uniform float uOpacity;
   varying float vAlpha;
 
   void main() {
-    if (uOpacity < 0.001) {
-      discard;
-    }
+    if (uOpacity < 0.001) discard;
+
     float d = length(gl_PointCoord - 0.5) * 2.0;
     if (d > 1.0) discard;
     float glow = 1.0 - d;
-    glow = pow(glow, 1.5);
-    vec3 col = vec3(0.3, 0.9, 1.0);
-    gl_FragColor = vec4(col * 2.5, glow * vAlpha * uOpacity);
+    glow = pow(glow, 2.0);
+
+    vec3 col = vec3(1.0, 0.6, 0.1);
+    gl_FragColor = vec4(col, glow * vAlpha * uOpacity);
   }
 `;
 
-const RING_RADIUS = 1.0;
-const PARTICLE_COUNT = 40;
+const SPARK_COUNT = 60;
 
 export default function Portal({ scrollRef, position = [0, 0, 0], rotation = [0, 0, 0], scale = 0.018 }) {
   const groupRef = useRef();
-  const light1Ref = useRef();
-  const light2Ref = useRef();
+  const ring1Ref = useRef();
+  const ring2Ref = useRef();
+  const ring3Ref = useRef();
+  const mandala1Ref = useRef();
+  const mandala2Ref = useRef();
 
-  // Load the original 3D portal model
-  const { scene } = useGLTF('/models/portal/scene.gltf');
-
-  // ponytail: calculate visual multiplier matching original size
+  // ponytail: visual multiplier matching original size
   const s = (scale / 0.006) * 0.8;
 
-  // Create a shared neon wireframe material
-  const wireMaterial = useMemo(() => {
-    return new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#00ffff'),
-      wireframe: true,
-      transparent: true,
-      opacity: 1.0,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    });
-  }, []);
+  // ── Uniforms ──
+  const ringUniforms1 = useMemo(() => ({
+    uTime: { value: 0 }, uOpacity: { value: 1.0 }, uSpeed: { value: 2.0 }, uIntensity: { value: 1.2 },
+  }), []);
+  const ringUniforms2 = useMemo(() => ({
+    uTime: { value: 0 }, uOpacity: { value: 1.0 }, uSpeed: { value: -1.5 }, uIntensity: { value: 0.9 },
+  }), []);
+  const ringUniforms3 = useMemo(() => ({
+    uTime: { value: 0 }, uOpacity: { value: 1.0 }, uSpeed: { value: 2.5 }, uIntensity: { value: 1.0 },
+  }), []);
+  const mandalaUniforms1 = useMemo(() => ({
+    uTime: { value: 0 }, uOpacity: { value: 1.0 },
+  }), []);
+  const mandalaUniforms2 = useMemo(() => ({
+    uTime: { value: 0 }, uOpacity: { value: 1.0 },
+  }), []);
+  const sparkUniforms = useMemo(() => ({
+    uTime: { value: 0 }, uOpacity: { value: 1.0 },
+  }), []);
 
-  // Create a shared halo material
-  const haloMaterial = useMemo(() => {
-    return new THREE.MeshBasicMaterial({
-      color: '#00ccff',
-      transparent: true,
-      opacity: 0.05,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-  }, []);
-
-  // Center the 3D model around its bounding box and apply wireframe material
-  const centeredScene = useMemo(() => {
-    const cloned = scene.clone();
-    
-    cloned.traverse((child) => {
-      if (child.isMesh) {
-        child.material = wireMaterial;
-      }
-    });
-
-    const box = new THREE.Box3().setFromObject(cloned);
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-    
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    const maxDim = Math.max(size.x, size.y);
-    const scaleFactor = 2.0 / maxDim; // Scale to radius of 1.0 (diameter 2.0)
-    
-    cloned.scale.setScalar(scaleFactor);
-    cloned.position.copy(center).negate().multiplyScalar(scaleFactor);
-
-    
-    const wrapper = new THREE.Group();
-    wrapper.add(cloned);
-    return wrapper;
-  }, [scene, wireMaterial]);
-
-  // ── Orbiting rune particles ──
-  const particleGeo = useMemo(() => {
-    const angles = new Float32Array(PARTICLE_COUNT);
-    const speeds = new Float32Array(PARTICLE_COUNT);
-    const radii  = new Float32Array(PARTICLE_COUNT);
-    const phases = new Float32Array(PARTICLE_COUNT);
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+  // ── Spark particle geometry ──
+  const sparkGeo = useMemo(() => {
+    const angles = new Float32Array(SPARK_COUNT);
+    const speeds = new Float32Array(SPARK_COUNT);
+    const radii = new Float32Array(SPARK_COUNT);
+    const phases = new Float32Array(SPARK_COUNT);
+    const life = new Float32Array(SPARK_COUNT);
+    const pos = new Float32Array(SPARK_COUNT * 3);
+    for (let i = 0; i < SPARK_COUNT; i++) {
       angles[i] = Math.random() * Math.PI * 2;
-      speeds[i] = 0.35 + Math.random() * 0.65;
-      radii[i]  = 1.1 + Math.random() * 0.45;
+      speeds[i] = 0.5 + Math.random() * 1.5;
+      radii[i] = 0.9 + Math.random() * 0.2;
       phases[i] = Math.random() * Math.PI * 2;
+      life[i] = 0.5 + Math.random() * 0.5;
     }
-    const pos = new Float32Array(PARTICLE_COUNT * 3);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('aAngle',   new THREE.BufferAttribute(angles, 1));
-    geo.setAttribute('aSpeed',   new THREE.BufferAttribute(speeds, 1));
-    geo.setAttribute('aRadius',  new THREE.BufferAttribute(radii, 1));
-    geo.setAttribute('aPhase',   new THREE.BufferAttribute(phases, 1));
+    geo.setAttribute('aAngle', new THREE.BufferAttribute(angles, 1));
+    geo.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+    geo.setAttribute('aRadius', new THREE.BufferAttribute(radii, 1));
+    geo.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
+    geo.setAttribute('aLife', new THREE.BufferAttribute(life, 1));
     return geo;
   }, []);
-
-  const particleUniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uRingRadius: { value: RING_RADIUS },
-    uOpacity: { value: 1.0 },
-  }), []);
 
   // ── Animation loop ──
   useFrame(({ clock }) => {
@@ -163,18 +261,22 @@ export default function Portal({ scrollRef, position = [0, 0, 0], rotation = [0,
 
     if (groupRef.current) {
       groupRef.current.visible = opacity > 0.001;
-      groupRef.current.position.y = position[1] + Math.sin(t * 1.5) * 0.05;
-      groupRef.current.rotation.y = rotation[1] + Math.sin(t * 0.4) * 0.04;
+      groupRef.current.position.y = position[1] + Math.sin(t * 1.5) * 0.03;
     }
 
-    // Update uniforms & material properties
-    wireMaterial.opacity = opacity;
-    haloMaterial.opacity = 0.05 * opacity;
-    particleUniforms.uTime.value = t;
-    particleUniforms.uOpacity.value = opacity;
+    // Rotate rings in opposite directions
+    if (ring1Ref.current) ring1Ref.current.rotation.z = t * 0.8;
+    if (ring2Ref.current) ring2Ref.current.rotation.z = -t * 0.5;
+    if (ring3Ref.current) ring3Ref.current.rotation.z = t * 1.2;
+    if (mandala1Ref.current) mandala1Ref.current.rotation.z = -t * 0.3;
+    if (mandala2Ref.current) mandala2Ref.current.rotation.z = t * 0.2;
 
-    if (light1Ref.current) light1Ref.current.intensity = 10.0 * opacity;
-    if (light2Ref.current) light2Ref.current.intensity = 4.0 * opacity;
+    // Update all uniforms
+    const allUniforms = [ringUniforms1, ringUniforms2, ringUniforms3, mandalaUniforms1, mandalaUniforms2, sparkUniforms];
+    for (const u of allUniforms) {
+      u.uTime.value = t;
+      u.uOpacity.value = opacity;
+    }
   });
 
   return (
@@ -184,35 +286,81 @@ export default function Portal({ scrollRef, position = [0, 0, 0], rotation = [0,
       rotation={rotation}
       scale={[s, s, s]}
     >
-      {/* Inner group: shifted up by 1.0 local units to sit on the grid */}
-      <group position={[0, 1.0, 0]}>
-        
-        {/* Render the 3D model scene */}
-        <primitive object={centeredScene} />
+      {/* ── Outer fire ring (largest) ── */}
+      <mesh ref={ring1Ref}>
+        <ringGeometry args={[0.88, 1.0, 128]} />
+        <shaderMaterial
+          uniforms={ringUniforms1}
+          vertexShader={ringVert}
+          fragmentShader={ringFrag}
+          transparent
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
-        {/* ── Volumetric Outer Halo Glow (Additive) ── */}
-        <mesh>
-          <sphereGeometry args={[RING_RADIUS * 1.3, 32, 32]} />
-          <primitive object={haloMaterial} attach="material" />
-        </mesh>
+      {/* ── Middle fire ring ── */}
+      <mesh ref={ring2Ref}>
+        <ringGeometry args={[0.78, 0.86, 128]} />
+        <shaderMaterial
+          uniforms={ringUniforms2}
+          vertexShader={ringVert}
+          fragmentShader={ringFrag}
+          transparent
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
-        {/* ── Orbiting Rune Particles ── */}
-        <points geometry={particleGeo}>
-          <shaderMaterial
-            vertexShader={particleVert}
-            fragmentShader={particleFrag}
-            uniforms={particleUniforms}
-            transparent
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-          />
-        </points>
+      {/* ── Inner fire ring ── */}
+      <mesh ref={ring3Ref}>
+        <ringGeometry args={[0.70, 0.76, 128]} />
+        <shaderMaterial
+          uniforms={ringUniforms3}
+          vertexShader={ringVert}
+          fragmentShader={ringFrag}
+          transparent
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
-        {/* ── Volumetric glow lights that fade out smoothly with scroll ── */}
-        <pointLight ref={light1Ref} distance={8} decay={1.5} color="#00d9ff" position={[0, 0, 0.3]} />
-        <pointLight ref={light2Ref} distance={12} decay={2}   color="#7a00ff" position={[0, 0, -0.3]} />
+      {/* ── Mandala pattern ring (outer) ── */}
+      <mesh ref={mandala1Ref}>
+        <ringGeometry args={[0.86, 0.88, 128]} />
+        <shaderMaterial
+          uniforms={mandalaUniforms1}
+          vertexShader={mandalaVert}
+          fragmentShader={mandalaFrag}
+          transparent
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
-      </group>
+      {/* ── Mandala pattern ring (inner) ── */}
+      <mesh ref={mandala2Ref}>
+        <ringGeometry args={[0.76, 0.78, 128]} />
+        <shaderMaterial
+          uniforms={mandalaUniforms2}
+          vertexShader={mandalaVert}
+          fragmentShader={mandalaFrag}
+          transparent
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* ── Sparks flying off the ring ── */}
+      <points geometry={sparkGeo}>
+        <shaderMaterial
+          vertexShader={sparkVert}
+          fragmentShader={sparkFrag}
+          uniforms={sparkUniforms}
+          transparent
+          depthWrite={false}
+        />
+      </points>
     </group>
   );
 }

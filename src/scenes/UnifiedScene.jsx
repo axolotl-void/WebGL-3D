@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Stars } from '@react-three/drei';
+import { Stars, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import TechCube from '../components/TechCube';
 import SnowyMountain from '../components/SnowyMountain';
@@ -69,7 +69,7 @@ function ParticleField({ count = 250 }) {
 const ZONE2_Z = -45;
 
 // Hardcoded portal coordinates chosen by the user
-const PORTAL_POS = [0.0, -3.10, -7.05];
+const PORTAL_POS = [3.50, -3.10, -7.05];
 const PORTAL_SCALE = 0.0060;
 const PORTAL_ROT_Y = 4.60;
 
@@ -81,9 +81,57 @@ export default function UnifiedScene() {
   const zone1Ref = useRef();
   const zone2Ref = useRef();
 
+  const [isFreeCam, setIsFreeCam] = useState(false);
+  const controlsRef = useRef();
+  const keysPressed = useRef({});
+
   const scrollRef = useRef(0);
   const targetScrollRef = useRef(0);
   const lastZoneRef = useRef(1); // Track current zone to trigger instant teleportation
+
+  // Set up keyboard listeners for free cam movement and create HTML Debug HUD
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const key = e.key.toLowerCase();
+      keysPressed.current[key] = true;
+      if (key === 'c') {
+        setIsFreeCam((prev) => !prev);
+      }
+    };
+    const handleKeyUp = (e) => {
+      keysPressed.current[e.key.toLowerCase()] = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    // Create HUD element
+    const el = document.createElement('div');
+    el.id = 'camera-debug-hud';
+    el.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 100000;
+      color: #00ffff;
+      background: rgba(2, 10, 23, 0.95);
+      border: 1px solid #00d9ff;
+      border-radius: 6px;
+      padding: 15px;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      box-shadow: 0 0 20px rgba(0, 217, 255, 0.35);
+      min-width: 285px;
+      pointer-events: none;
+    `;
+    document.body.appendChild(el);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      el.remove();
+    };
+  }, []);
 
   // Intro camera constants (allocated once)
   const introCamStart = useMemo(() => new THREE.Vector3(0, 25, 40), []);
@@ -99,21 +147,39 @@ export default function UnifiedScene() {
     new THREE.Vector3(0, 1.2, -6.0)
   ]), []);
 
-  // ── Zone 2 Camera Position Spline (using exact coordinates from tracker) ──
-  const zone2Positions = useMemo(() => [
-    new THREE.Vector3(-1.85, -1.94, -64.83), // Exact screenshot position
+  // ── Zone 2 Camera Position Spline (Original 3 points) ──
+  const zone2PositionsOriginal = useMemo(() => [
+    new THREE.Vector3(-1.85, -1.94, -64.83),
     new THREE.Vector3(-0.62, -0.67, ZONE2_Z - 16.15),
     new THREE.Vector3(-2.04, -1.17, ZONE2_Z - 13.32)
   ], []);
+  const zone2PosCurveOriginal = useMemo(() => new THREE.CatmullRomCurve3(zone2PositionsOriginal), [zone2PositionsOriginal]);
 
-  // ── Zone 2 Camera Rotation Spline (using exact Quaternions from tracker) ──
-  const zone2Quaternions = useMemo(() => [
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(-3.14, -0.21, 3.14)), // Exact screenshot rotation
+  // ── Zone 2 Camera Position Spline (New progression points to portal) ──
+  const zone2PositionsNew = useMemo(() => [
+    new THREE.Vector3(-2.04, -1.17, ZONE2_Z - 13.32), // Start at the end of original
+    new THREE.Vector3(-1.32, -1.46, -57.54),
+    new THREE.Vector3(-1.27, -2.50, -55.86),
+    new THREE.Vector3(-1.02, -2.45, -53.05),
+    new THREE.Vector3(2.22, -3.02, -52.19)
+  ], []);
+  const zone2PosCurveNew = useMemo(() => new THREE.CatmullRomCurve3(zone2PositionsNew), [zone2PositionsNew]);
+
+  // ── Zone 2 Camera Rotation Spline (Original Quaternions) ──
+  const zone2QuaternionsOriginal = useMemo(() => [
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(-3.14, -0.21, 3.14)),
     new THREE.Quaternion().setFromEuler(new THREE.Euler(-2.93, -0.10, -3.12)),
     new THREE.Quaternion().setFromEuler(new THREE.Euler(-2.90, -0.54, -3.01))
   ], []);
 
-  const zone2PosCurve = useMemo(() => new THREE.CatmullRomCurve3(zone2Positions), [zone2Positions]);
+  // ── Zone 2 Camera Rotation Spline (New Quaternions) ──
+  const zone2QuaternionsNew = useMemo(() => [
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(-2.90, -0.54, -3.01)), // Start at original end rotation
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(3.12, -0.03, 3.14)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(3.12, -0.03, 3.14)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(-3.06, -1.06, -3.07)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(-2.91, -1.41, -2.91))
+  ], []);
 
   // Mapped 5 interactive cubes with hardcoded custom coordinates set by user in Zone 2
   const zone2Cubes = useMemo(() => [
@@ -144,13 +210,13 @@ export default function UnifiedScene() {
 
 
     // ═══════════════════════════════════════════════════════════════════════
-    // SCROLL INTERPOLATION
+    // SCROLL INTERPOLATION (with speed limiting to prevent mountain clipping)
     // ═══════════════════════════════════════════════════════════════════════
-    scrollRef.current = THREE.MathUtils.lerp(
-      scrollRef.current,
-      targetScrollRef.current,
-      0.065
-    );
+    const diff = targetScrollRef.current - scrollRef.current;
+    const lerpedStep = diff * 0.05;
+    const maxSpeed = 0.007; // ponytail: limit scroll change speed per frame to keep camera movements safe
+    const step = Math.sign(lerpedStep) * Math.min(Math.abs(lerpedStep), maxSpeed);
+    scrollRef.current += step;
     const scroll = scrollRef.current;
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -218,26 +284,39 @@ export default function UnifiedScene() {
       // Phase 2: Zone 2 Explore (scroll 0.24 to 0.75)
       if (scroll <= 0.35) {
         // Sit completely still at the entrance of Zone 2 while the portal fades out
-        targetPos.copy(zone2Positions[0]);
-        targetRot.copy(zone2Quaternions[0]);
+        targetPos.copy(zone2PositionsOriginal[0]);
+        targetRot.copy(zone2QuaternionsOriginal[0]);
       } else {
         // Move along the Zone 2 curve
         const t = (scroll - 0.35) / (zone2EndScroll - 0.35);
-        targetPos.copy(zone2PosCurve.getPointAt(t));
+        if (t <= 0.5) {
+          const localT = t / 0.5;
+          targetPos.copy(zone2PosCurveOriginal.getPointAt(localT));
 
-        // Calculate slerp rotation for Zone 2 segments (exactly like SecondScene)
-        const numSegments = zone2Quaternions.length - 1;
-        const scaledT = t * numSegments;
-        const index = Math.min(Math.floor(scaledT), numSegments - 1);
-        const localT = scaledT - index;
-        targetRot.slerpQuaternions(zone2Quaternions[index], zone2Quaternions[index + 1], ease(localT));
+          // Calculate slerp rotation for original Zone 2 segments
+          const numSegments = zone2QuaternionsOriginal.length - 1;
+          const scaledT = localT * numSegments;
+          const index = Math.min(Math.floor(scaledT), numSegments - 1);
+          const segmentT = scaledT - index;
+          targetRot.slerpQuaternions(zone2QuaternionsOriginal[index], zone2QuaternionsOriginal[index + 1], ease(segmentT));
+        } else {
+          const localT = (t - 0.5) / 0.5;
+          targetPos.copy(zone2PosCurveNew.getPointAt(localT));
+
+          // Calculate slerp rotation for new Zone 2 segments
+          const numSegments = zone2QuaternionsNew.length - 1;
+          const scaledT = localT * numSegments;
+          const index = Math.min(Math.floor(scaledT), numSegments - 1);
+          const segmentT = scaledT - index;
+          targetRot.slerpQuaternions(zone2QuaternionsNew[index], zone2QuaternionsNew[index + 1], ease(segmentT));
+        }
       }
     } else {
       // Phase 3: Zoom into Portal (scroll 0.75 to 1.00)
       const t = (scroll - zone2EndScroll) / (1.00 - zone2EndScroll);
       
-      const startPos = zone2Positions[zone2Positions.length - 1];
-      const startRot = zone2Quaternions[zone2Quaternions.length - 1];
+      const startPos = zone2PositionsNew[zone2PositionsNew.length - 1];
+      const startRot = zone2QuaternionsNew[zone2QuaternionsNew.length - 1];
       
       // Portal center is at PORTAL_POS[1] + torus world radius
       const portalScaleMultiplier = (PORTAL_SCALE / 0.006) * 0.8;
@@ -279,29 +358,50 @@ export default function UnifiedScene() {
       targetRot.slerpQuaternions(startRot, lookRot, ease(t));
     }
 
-    if (introActive) {
-      // Dramatic swoop from above down to start position (0.0 scroll position)
-      const introPos = new THREE.Vector3(0, 25, 40);
-      const startLookTarget = new THREE.Vector3(0, 0, -12);
-      const mStart = new THREE.Matrix4();
-      mStart.lookAt(introPos, startLookTarget, new THREE.Vector3(0, 1, 0));
-      const introRot = new THREE.Quaternion().setFromRotationMatrix(mStart);
+    if (isFreeCam) {
+      // ═══════════════════════════════════════════════════════════════════════
+      // FREE CAM MOVEMENT (WASD to fly, Q/E for Y translation)
+      // ═══════════════════════════════════════════════════════════════════════
+      const speed = 0.04;
+      const prevPos = camera.position.clone();
 
-      camera.position.lerpVectors(introPos, targetPos, introEased);
-      camera.quaternion.slerpQuaternions(introRot, targetRot, introEased);
+      if (keysPressed.current['w']) camera.translateZ(-speed);
+      if (keysPressed.current['s']) camera.translateZ(speed);
+      if (keysPressed.current['a']) camera.translateX(-speed);
+      if (keysPressed.current['d']) camera.translateX(speed);
+      if (keysPressed.current['q']) camera.position.y += speed;
+      if (keysPressed.current['e']) camera.position.y -= speed;
+
+      // Update OrbitControls target offset
+      if (controlsRef.current) {
+        const displacement = camera.position.clone().sub(prevPos);
+        controlsRef.current.target.add(displacement);
+      }
     } else {
-      // Detect transition boundary crossing and force instant teleportation
-      const currentZone = scroll < 0.24 ? 1 : 2;
-      if (currentZone !== lastZoneRef.current) {
-        camera.position.set(targetPos.x + mouseX, targetPos.y + mouseY, targetPos.z);
-        camera.quaternion.copy(targetRot);
-        lastZoneRef.current = currentZone;
+      if (introActive) {
+        // Dramatic swoop from above down to start position (0.0 scroll position)
+        const introPos = new THREE.Vector3(0, 25, 40);
+        const startLookTarget = new THREE.Vector3(0, 0, -12);
+        const mStart = new THREE.Matrix4();
+        mStart.lookAt(introPos, startLookTarget, new THREE.Vector3(0, 1, 0));
+        const introRot = new THREE.Quaternion().setFromRotationMatrix(mStart);
+
+        camera.position.lerpVectors(introPos, targetPos, introEased);
+        camera.quaternion.slerpQuaternions(introRot, targetRot, introEased);
       } else {
-        // Lerp camera position & quaternion for buttery smoothness
-        camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetPos.x + mouseX, 0.05);
-        camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetPos.y + mouseY, 0.05);
-        camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetPos.z, 0.05);
-        camera.quaternion.slerp(targetRot, 0.05);
+        // Detect transition boundary crossing and force instant teleportation
+        const currentZone = scroll < 0.24 ? 1 : 2;
+        if (currentZone !== lastZoneRef.current) {
+          camera.position.set(targetPos.x + mouseX, targetPos.y + mouseY, targetPos.z);
+          camera.quaternion.copy(targetRot);
+          lastZoneRef.current = currentZone;
+        } else {
+          // ponytail: copy target position and rotation instantly to follow spline path exactly without cutting corners (avoiding geometry clipping)
+          camera.position.x = targetPos.x + mouseX;
+          camera.position.y = targetPos.y + mouseY;
+          camera.position.z = targetPos.z;
+          camera.quaternion.copy(targetRot);
+        }
       }
     }
 
@@ -334,7 +434,7 @@ export default function UnifiedScene() {
     // ponytail: prevents GPU overheating by stopping background draw calls
     // ═══════════════════════════════════════════════════════════════════════
     if (zone1Ref.current) {
-      zone1Ref.current.visible = scroll < 0.24;
+      zone1Ref.current.visible = isFreeCam || (scroll < 0.24);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -351,20 +451,20 @@ export default function UnifiedScene() {
       shaderProgress = 1.0 - ease((scroll - portalPeakScroll) / (portalOut - portalPeakScroll));
     }
 
-    window.__portalProgress = shaderProgress;
+    window.__portalProgress = isFreeCam ? 0.0 : shaderProgress;
 
     // ═══════════════════════════════════════════════════════════════════════
     // ZONE 2: Hide until camera starts flying, then reveal
     // ponytail: prevents second mountain appearing as floating dot in Zone 1
     // ═══════════════════════════════════════════════════════════════════════
     if (zone2Ref.current) {
-      zone2Ref.current.visible = scroll > 0.18;
+      zone2Ref.current.visible = isFreeCam || (scroll > 0.18);
     }
     if (secondMountainRef.current?.uniforms) {
       const zone2Progress = Math.min(Math.max((scroll - 0.35) / (zone2EndScroll - 0.35), 0), 1);
-      secondMountainRef.current.uniforms.uRevealProgress.value = zone2Progress;
+      secondMountainRef.current.uniforms.uRevealProgress.value = isFreeCam ? 1.0 : zone2Progress;
       // Cap the camera Z value during the transition scroll phase to prevent bright cyan flashes
-      secondMountainRef.current.uniforms.uCameraZ.value = scroll >= 0.24 ? targetPos.z : -100.0;
+      secondMountainRef.current.uniforms.uCameraZ.value = isFreeCam ? camera.position.z : (scroll >= 0.24 ? targetPos.z : -100.0);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -372,6 +472,24 @@ export default function UnifiedScene() {
     // ═══════════════════════════════════════════════════════════════════════
     const bgBlend = ease(Math.min(Math.max((scroll - 0.3) / 0.4, 0), 1));
     state.scene.background.copy(bgColor1).lerp(bgColor2, bgBlend);
+
+    // Update Debug HUD overlay
+    const debugHud = document.getElementById('camera-debug-hud');
+    if (debugHud) {
+      debugHud.innerHTML = `
+        <div style="font-weight: bold; color: #ff0055; border-bottom: 1px solid #00d9ff; padding-bottom: 5px; margin-bottom: 8px; font-size: 14px; letter-spacing: 1px;">CAMERA LEVEL DEBUGGER</div>
+        <div>Mode: ${isFreeCam ? '<span style="color: #39ff14; font-weight: bold;">FREE CAM (ACTIVE)</span>' : '<span style="color: #ffcc00; font-weight: bold;">SCROLL TRACKING</span>'}</div>
+        <div style="margin-top: 6px;">Position: [${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)}]</div>
+        <div>Rotation (Euler): [${camera.rotation.x.toFixed(2)}, ${camera.rotation.y.toFixed(2)}, ${camera.rotation.z.toFixed(2)}]</div>
+        <div style="margin-top: 10px; border-top: 1px dashed rgba(0, 217, 255, 0.4); padding-top: 6px; color: #88aaff; font-size: 11px;">
+          Press <strong>C</strong> to Toggle Free Cam<br/>
+          Move: <strong>W/S</strong> (Forward/Back)<br/>
+          Move: <strong>A/D</strong> (Left/Right)<br/>
+          Move: <strong>Q/E</strong> (Up/Down)<br/>
+          Look: <strong>Drag Mouse</strong> to Orbit
+        </div>
+      `;
+    }
   });
 
   return (
@@ -416,6 +534,8 @@ export default function UnifiedScene() {
       {/* ════════════ ZONE 2 ACCENT LIGHTING ════════════ */}
       <directionalLight position={[-15, 10, ZONE2_Z - 10]} intensity={3.5} color="#00ffff" />
       <directionalLight position={[15, 5, ZONE2_Z + 15]} intensity={2.5} color="#ff0055" />
+
+      {isFreeCam && <OrbitControls ref={controlsRef} enableDamping={false} />}
     </>
   );
 }
