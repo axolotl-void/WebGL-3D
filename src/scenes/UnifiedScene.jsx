@@ -69,7 +69,7 @@ function ParticleField({ count = 250 }) {
 const ZONE2_Z = -45;
 
 // Hardcoded portal coordinates chosen by the user
-const PORTAL_POS = [3.50, -3.10, -7.05];
+const PORTAL_POS = [0.0, -3.10, -7.05];
 const PORTAL_SCALE = 0.0060;
 const PORTAL_ROT_Y = 4.60;
 
@@ -83,6 +83,7 @@ export default function UnifiedScene() {
 
   const scrollRef = useRef(0);
   const targetScrollRef = useRef(0);
+  const lastZoneRef = useRef(1); // Track current zone to trigger instant teleportation
 
   // Intro camera constants (allocated once)
   const introCamStart = useMemo(() => new THREE.Vector3(0, 25, 40), []);
@@ -289,11 +290,19 @@ export default function UnifiedScene() {
       camera.position.lerpVectors(introPos, targetPos, introEased);
       camera.quaternion.slerpQuaternions(introRot, targetRot, introEased);
     } else {
-      // Lerp camera position & quaternion for buttery smoothness
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetPos.x + mouseX, 0.05);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetPos.y + mouseY, 0.05);
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetPos.z, 0.05);
-      camera.quaternion.slerp(targetRot, 0.05);
+      // Detect transition boundary crossing and force instant teleportation
+      const currentZone = scroll < 0.24 ? 1 : 2;
+      if (currentZone !== lastZoneRef.current) {
+        camera.position.set(targetPos.x + mouseX, targetPos.y + mouseY, targetPos.z);
+        camera.quaternion.copy(targetRot);
+        lastZoneRef.current = currentZone;
+      } else {
+        // Lerp camera position & quaternion for buttery smoothness
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetPos.x + mouseX, 0.05);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetPos.y + mouseY, 0.05);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetPos.z, 0.05);
+        camera.quaternion.slerp(targetRot, 0.05);
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -325,7 +334,7 @@ export default function UnifiedScene() {
     // ponytail: prevents GPU overheating by stopping background draw calls
     // ═══════════════════════════════════════════════════════════════════════
     if (zone1Ref.current) {
-      zone1Ref.current.visible = scroll < 0.30;
+      zone1Ref.current.visible = scroll < 0.24;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -342,14 +351,6 @@ export default function UnifiedScene() {
       shaderProgress = 1.0 - ease((scroll - portalPeakScroll) / (portalOut - portalPeakScroll));
     }
 
-    // Phase 3: Zoom into Portal transition (starts at scroll = 0.85, peaks at 0.98)
-    const secondPortalIn = 0.85;
-    const secondPortalPeak = 0.98;
-    if (scroll > secondPortalIn) {
-      const p = Math.min((scroll - secondPortalIn) / (secondPortalPeak - secondPortalIn), 1.0);
-      shaderProgress = Math.max(shaderProgress, ease(p));
-    }
-
     window.__portalProgress = shaderProgress;
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -363,7 +364,7 @@ export default function UnifiedScene() {
       const zone2Progress = Math.min(Math.max((scroll - 0.35) / (zone2EndScroll - 0.35), 0), 1);
       secondMountainRef.current.uniforms.uRevealProgress.value = zone2Progress;
       // Cap the camera Z value during the transition scroll phase to prevent bright cyan flashes
-      secondMountainRef.current.uniforms.uCameraZ.value = scroll >= 0.18 ? targetPos.z : -100.0;
+      secondMountainRef.current.uniforms.uCameraZ.value = scroll >= 0.24 ? targetPos.z : -100.0;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -405,6 +406,7 @@ export default function UnifiedScene() {
           />
         ))}
         <Portal 
+          scrollRef={scrollRef}
           position={PORTAL_POS} 
           scale={PORTAL_SCALE}
           rotation={[0, PORTAL_ROT_Y, 0]} 

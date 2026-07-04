@@ -21,7 +21,8 @@ const cubeVert = /* glsl */`
     vNormal = normalize(normalMatrix * normal);
     vec4 wp = modelMatrix * vec4(position, 1.0);
     vWorldPos = wp.xyz;
-    vViewDir = normalize(cameraPosition - wp.xyz + vec3(0.0001));
+    vec3 toCam = cameraPosition - wp.xyz;
+    vViewDir = toCam / (length(toCam) + 0.0001);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
@@ -267,7 +268,8 @@ const TechCube = forwardRef(function TechCube({ scrollRef }, ref) {
               void main() {
                 vNormal = normalize(normalMatrix * normal);
                 vec4 wp = modelMatrix * vec4(position, 1.0);
-                vViewDir = normalize(cameraPosition - wp.xyz + vec3(0.0001));
+                vec3 toCam = cameraPosition - wp.xyz;
+                vViewDir = toCam / (length(toCam) + 0.0001);
                 gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
               }
             `}
