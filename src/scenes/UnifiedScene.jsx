@@ -214,7 +214,8 @@ export default function UnifiedScene() {
     // ═══════════════════════════════════════════════════════════════════════
     const diff = targetScrollRef.current - scrollRef.current;
     const lerpedStep = diff * 0.05;
-    const maxSpeed = 0.007; // ponytail: limit scroll change speed per frame to keep camera movements safe
+    // ponytail: slower speed on the second island (Z >= 0.24) to keep it cinematic
+    const maxSpeed = scrollRef.current >= 0.24 ? 0.0012 : 0.003;
     const step = Math.sign(lerpedStep) * Math.min(Math.abs(lerpedStep), maxSpeed);
     scrollRef.current += step;
     const scroll = scrollRef.current;
@@ -312,50 +313,11 @@ export default function UnifiedScene() {
         }
       }
     } else {
-      // Phase 3: Zoom into Portal (scroll 0.75 to 1.00)
-      const t = (scroll - zone2EndScroll) / (1.00 - zone2EndScroll);
-      
+      // Phase 3: Freeze in front of Portal (scroll 0.75 to 1.00)
       const startPos = zone2PositionsNew[zone2PositionsNew.length - 1];
       const startRot = zone2QuaternionsNew[zone2QuaternionsNew.length - 1];
-      
-      // Portal center is at PORTAL_POS[1] + torus world radius
-      const portalScaleMultiplier = (PORTAL_SCALE / 0.006) * 0.8;
-      const openingY = PORTAL_POS[1] + portalScaleMultiplier;
-      const portalCenterPos = new THREE.Vector3(
-        PORTAL_POS[0],
-        openingY,
-        PORTAL_POS[2] + ZONE2_Z
-      );
-      
-      // Calculate normal direction of the portal (scaled by portal size)
-      const forwardX = Math.sin(PORTAL_ROT_Y) * (1.5 * portalScaleMultiplier);
-      const forwardZ = Math.cos(PORTAL_ROT_Y) * (1.5 * portalScaleMultiplier);
-      
-      // Pass through the portal to the back side (subtract normal vector since it points towards camera)
-      const portalPassPos = new THREE.Vector3(
-        PORTAL_POS[0] - forwardX,
-        openingY,
-        PORTAL_POS[2] + ZONE2_Z - forwardZ
-      );
-      
-      targetPos.lerpVectors(startPos, portalPassPos, ease(t));
-      
-      // ponytail: add a vertical arc to fly over the mountain ridge and swoop down into the portal (decays to 0 at the end to align with portal center)
-      const heightOffset = Math.sin(t * Math.PI) * 4.5 * (1.0 - t);
-      targetPos.y += heightOffset;
-      
-      // Face forward towards a target far behind the portal so the camera never spins around when crossing the plane
-      const farLookTarget = new THREE.Vector3(
-        PORTAL_POS[0] - forwardX * 25.0,
-        openingY,
-        PORTAL_POS[2] + ZONE2_Z - forwardZ * 25.0
-      );
-      
-      const lookMat = new THREE.Matrix4();
-      lookMat.lookAt(targetPos, farLookTarget, new THREE.Vector3(0, 1, 0));
-      const lookRot = new THREE.Quaternion().setFromRotationMatrix(lookMat);
-      
-      targetRot.slerpQuaternions(startRot, lookRot, ease(t));
+      targetPos.copy(startPos);
+      targetRot.copy(startRot);
     }
 
     if (isFreeCam) {
