@@ -120,22 +120,24 @@ export default function HeroOverlay() {
     if (!root) return;
 
     const navbar = root.querySelector('.ho-navbar');
-    const skillItems = root.querySelectorAll('.ho-skill-item'); // queryAll to select all 5 items
+    const skillItems = Array.from(root.querySelectorAll('.ho-skill-item')); // Array for proper GSAP stagger
     const skillTags = root.querySelector('.ho-skill-tags');     // container for scroll exit fade
     const label = root.querySelector('.ho-hero-label');
     const titleWhite = root.querySelector('.ho-title-white');
     const titleCyan = root.querySelector('.ho-title-cyan');
-    const dividerLines = root.querySelectorAll('.ho-divider-line');
+    const dividerLines = Array.from(root.querySelectorAll('.ho-divider-line'));
     const dividerDiamond = root.querySelector('.ho-divider-diamond');
     const desc = root.querySelector('.ho-hero-desc');
-    const buttons = root.querySelectorAll('.ho-btn');
+    const buttons = Array.from(root.querySelectorAll('.ho-btn'));
     const statusBar = root.querySelector('.ho-status-bar');
+
+    const dividerElements = [...dividerLines, dividerDiamond];
 
     gsap.set(navbar, { opacity: 0, y: -20 });
     gsap.set(skillItems, { opacity: 0, x: -30 });
     gsap.set(label, { opacity: 0, letterSpacing: '0.05em' });
     gsap.set([titleWhite, titleCyan], { opacity: 0, y: 30, filter: 'blur(8px)' });
-    gsap.set([dividerLines, dividerDiamond], { opacity: 0, scaleX: 0 });
+    gsap.set(dividerElements, { opacity: 0, scaleX: 0 });
     gsap.set(desc, { opacity: 0 });
     gsap.set(buttons, { opacity: 0, y: 20 });
     gsap.set(statusBar, { opacity: 0, y: 15 });
@@ -147,7 +149,7 @@ export default function HeroOverlay() {
     tl.to(label, { opacity: 1, letterSpacing: '0.25em', duration: 0.8, ease: 'power2.out' }, 0.7);
     tl.to(titleWhite, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, ease: 'power3.out' }, 0.9);
     tl.to(titleCyan, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, ease: 'power3.out' }, 1.15);
-    tl.to([dividerLines, dividerDiamond], { opacity: 1, scaleX: 1, duration: 0.5, ease: 'power2.out' }, 1.5);
+    tl.to(dividerElements, { opacity: 1, scaleX: 1, duration: 0.5, ease: 'power2.out' }, 1.5);
     tl.to(desc, { opacity: 1, duration: 0.6, ease: 'power2.out' }, 1.7);
     tl.to(buttons, {
       opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.1,
@@ -162,9 +164,12 @@ export default function HeroOverlay() {
 
     const updateHeroPositionAndOpacity = (e) => {
       const scrollY = window.scrollY;
-      const fadeStart = 0;
-      const fadeEnd = 350; // Text is fully invisible after 350px of scroll
-      const rawProgress = (scrollY - fadeStart) / (fadeEnd - fadeStart);
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollRatio = maxScroll > 0 ? scrollY / maxScroll : 0;
+      
+      const fadeStart = 0.0;
+      const fadeEnd = 0.08; // Fades out completely by 8% of the total page scroll
+      const rawProgress = (scrollRatio - fadeStart) / (fadeEnd - fadeStart);
       const scrollOpacity = Math.max(0, 1 - Math.min(1, rawProgress));
 
       let cx = 0;
@@ -219,6 +224,9 @@ export default function HeroOverlay() {
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('scroll', handleScroll);
+
+    // Initial check to apply correct visibility state immediately on mount
+    updateHeroPositionAndOpacity(null);
 
     return () => {
       tl.kill();

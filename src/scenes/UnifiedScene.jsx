@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Stars, OrbitControls } from '@react-three/drei';
+import { Stars, OrbitControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import TechCube from '../components/TechCube';
 import SnowyMountain from '../components/SnowyMountain';
@@ -84,6 +84,13 @@ export default function UnifiedScene() {
   const [isFreeCam, setIsFreeCam] = useState(false);
   const controlsRef = useRef();
   const keysPressed = useRef({});
+
+  // Debug HUD Refs
+  const debugScrollRef = useRef();
+  const debugPosRef = useRef();
+  const debugRotRef = useRef();
+  const debugZoneRef = useRef();
+  const debugFreeCamRef = useRef();
 
   const scrollRef = useRef(0);
   const targetScrollRef = useRef(0);
@@ -187,14 +194,13 @@ export default function UnifiedScene() {
 
 
     // ═══════════════════════════════════════════════════════════════════════
-    // SCROLL INTERPOLATION (with speed limiting to prevent mountain clipping)
+    // SCROLL INTERPOLATION (smooth responsive lerp)
     // ═══════════════════════════════════════════════════════════════════════
-    const diff = targetScrollRef.current - scrollRef.current;
-    const lerpedStep = diff * 0.05;
-    // ponytail: slower speed on the second island (Z >= 0.24) to keep it cinematic
-    const maxSpeed = scrollRef.current >= 0.24 ? 0.0012 : 0.003;
-    const step = Math.sign(lerpedStep) * Math.min(Math.abs(lerpedStep), maxSpeed);
-    scrollRef.current += step;
+    scrollRef.current = THREE.MathUtils.lerp(
+      scrollRef.current,
+      targetScrollRef.current,
+      0.025
+    );
     const scroll = scrollRef.current;
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -412,7 +418,20 @@ export default function UnifiedScene() {
     const bgBlend = ease(Math.min(Math.max((scroll - 0.3) / 0.4, 0), 1));
     state.scene.background.copy(bgColor1).lerp(bgColor2, bgBlend);
 
-
+    // Update Debug HUD elements directly for high performance (no React re-renders)
+    if (debugScrollRef.current) debugScrollRef.current.innerText = scroll.toFixed(4);
+    if (debugPosRef.current) {
+      debugPosRef.current.innerText = `X: ${camera.position.x.toFixed(2)} | Y: ${camera.position.y.toFixed(2)} | Z: ${camera.position.z.toFixed(2)}`;
+    }
+    if (debugRotRef.current) {
+      debugRotRef.current.innerText = `Pitch: ${camera.rotation.x.toFixed(2)} | Yaw: ${camera.rotation.y.toFixed(2)} | Roll: ${camera.rotation.z.toFixed(2)}`;
+    }
+    if (debugZoneRef.current) {
+      debugZoneRef.current.innerText = scroll < 0.24 ? 'ZONE 1 (Hero Island)' : 'ZONE 2 (Space Island)';
+    }
+    if (debugFreeCamRef.current) {
+      debugFreeCamRef.current.innerText = isFreeCam ? 'ACTIVE (WASD/Drag)' : 'INACTIVE (Scroll controlled)';
+    }
   });
 
   return (
@@ -459,6 +478,56 @@ export default function UnifiedScene() {
       <directionalLight position={[15, 5, ZONE2_Z + 15]} intensity={2.5} color="#ff0055" />
 
       {isFreeCam && <OrbitControls ref={controlsRef} enableDamping={false} />}
+
+      {/* ════════════ COORDINATE DEBUG HUD ════════════ */}
+      <Html fullscreen pointerEvents="none">
+        <div style={{
+          position: 'absolute',
+          top: '90px',
+          right: '40px',
+          fontFamily: 'var(--font-display, "Orbitron", sans-serif)',
+          fontSize: '0.75rem',
+          color: '#00d2ff',
+          background: 'rgba(2, 10, 23, 0.85)',
+          border: '1px solid rgba(0, 210, 255, 0.3)',
+          boxShadow: '0 0 15px rgba(0, 210, 255, 0.15)',
+          padding: '16px',
+          width: '320px',
+          pointerEvents: 'auto',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          clipPath: 'polygon(10px 0%, 100% 0%, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0% 100%, 0% 10px)'
+        }}>
+          <div style={{ fontWeight: 800, borderBottom: '1px solid rgba(0, 210, 255, 0.2)', paddingBottom: '4px', marginBottom: '4px', fontSize: '0.8rem', letterSpacing: '0.1em' }}>
+            CAMERA DEBUG CONSOLE
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: '#8da4c4' }}>CURRENT ZONE:</span>
+            <span ref={debugZoneRef} style={{ fontWeight: 'bold' }}>-</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: '#8da4c4' }}>SCROLL PROGRESS:</span>
+            <span ref={debugScrollRef} style={{ fontWeight: 'bold' }}>-</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ color: '#8da4c4' }}>POSITION:</span>
+            <span ref={debugPosRef} style={{ color: '#fff', paddingLeft: '8px', fontFamily: 'monospace' }}>-</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ color: '#8da4c4' }}>ROTATION (EULER):</span>
+            <span ref={debugRotRef} style={{ color: '#fff', paddingLeft: '8px', fontFamily: 'monospace' }}>-</span>
+          </div>
+          <div style={{ display: 'flex', borderTop: '1px dashed rgba(0, 210, 255, 0.15)', paddingTop: '8px', marginTop: '4px', justifyContent: 'space-between' }}>
+            <span style={{ color: '#8da4c4' }}>FREE CAM [C]:</span>
+            <span ref={debugFreeCamRef} style={{ fontWeight: 'bold', color: isFreeCam ? '#39ff14' : '#ff0055' }}>-</span>
+          </div>
+          <div style={{ fontSize: '0.6rem', color: '#8da4c4', fontStyle: 'italic', marginTop: '2px', lineHeight: '1.2' }}>
+            *Press [C] to toggle free fly mode. Use WASD keys to move, Q/E to fly up/down, and drag mouse to rotate.
+          </div>
+        </div>
+      </Html>
     </>
   );
 }

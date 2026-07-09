@@ -36,7 +36,7 @@ function App() {
 
       {/* Tall invisible div for scroll-driven camera */}
       <div className="scroll-container" style={{ pointerEvents: 'none' }}>
-        <div style={{ height: '500vh', width: '100%' }} />
+        <div style={{ height: '800vh', width: '100%' }} />
       </div>
     </>
   );
