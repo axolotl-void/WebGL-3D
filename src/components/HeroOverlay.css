@@ -261,7 +261,6 @@
 }
 
 
-/* ─────────── CENTER HERO ─────────── */
 .ho-hero-center {
   position: absolute;
   bottom: 6%;
@@ -270,8 +269,6 @@
   text-align: center;
   width: 100%;
   max-width: 700px;
-  /* ponytail: smooth transition for mouse parallax */
-  transition: transform 0.15s ease-out;
 }
 
 .ho-hero-label {

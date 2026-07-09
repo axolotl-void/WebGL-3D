@@ -69,26 +69,18 @@ export default function HeroOverlay() {
     };
   }, []);
 
-  // 1. Preload background audio on component mount
+  // Manage background audio instance and playback syncing
   useEffect(() => {
-    const audio = new Audio('/models/sound/latar-belakang.mp3');
-    audio.loop = true;
-    audio.volume = 0.4;
-    audio.preload = 'auto'; // Begin loading/buffering immediately
-    bgAudioRef.current = audio;
+    // Ensure the audio instance is created and preloaded immediately
+    if (!bgAudioRef.current) {
+      const audio = new Audio('/models/sound/latar-belakang.mp3');
+      audio.loop = true;
+      audio.volume = 0.4;
+      audio.preload = 'auto'; // Begin loading/buffering immediately
+      bgAudioRef.current = audio;
+    }
 
-    return () => {
-      if (bgAudioRef.current) {
-        bgAudioRef.current.pause();
-        bgAudioRef.current = null;
-      }
-    };
-  }, []);
-
-  // 2. Sync background audio play/pause with isSoundOn state & bypass autoplay block
-  useEffect(() => {
     const audio = bgAudioRef.current;
-    if (!audio) return;
 
     if (isSoundOn) {
       const playAudio = () => {
@@ -104,7 +96,7 @@ export default function HeroOverlay() {
           });
       };
 
-      // Try playing immediately (works if browser whitelisted the domain/refresh)
+      // Try playing immediately (works if browser whitelisted the domain or on refresh if already interacted)
       playAudio();
 
       // Fallback interaction listeners for first user gesture
@@ -122,13 +114,14 @@ export default function HeroOverlay() {
     }
   }, [isSoundOn]);
 
-  // Intro animation timeline
+  // Intro and scroll animations
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
     const navbar = root.querySelector('.ho-navbar');
-    const skillItems = root.querySelector('.ho-skill-item');
+    const skillItems = root.querySelectorAll('.ho-skill-item'); // queryAll to select all 5 items
+    const skillTags = root.querySelector('.ho-skill-tags');     // container for scroll exit fade
     const label = root.querySelector('.ho-hero-label');
     const titleWhite = root.querySelector('.ho-title-white');
     const titleCyan = root.querySelector('.ho-title-cyan');
@@ -164,20 +157,73 @@ export default function HeroOverlay() {
     }, 1.95);
     tl.to(statusBar, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 2.3);
 
-    // Mouse parallax on hero text
+    // Mouse parallax and scroll-driven exit animation on hero text using GSAP (avoids fighting CSS transitions)
     const heroCenter = root.querySelector('.ho-hero-center');
-    const handleMove = (e) => {
-      const cx = (e.clientX / window.innerWidth - 0.5) * 2;
-      const cy = (e.clientY / window.innerHeight - 0.5) * 2;
+
+    const updateHeroPositionAndOpacity = (e) => {
+      const scrollY = window.scrollY;
+      const fadeStart = 0;
+      const fadeEnd = 350; // Text is fully invisible after 350px of scroll
+      const rawProgress = (scrollY - fadeStart) / (fadeEnd - fadeStart);
+      const scrollOpacity = Math.max(0, 1 - Math.min(1, rawProgress));
+
+      let cx = 0;
+      let cy = 0;
+      if (e) {
+        cx = (e.clientX / window.innerWidth - 0.5) * 2; // -1 to 1
+        cy = (e.clientY / window.innerHeight - 0.5) * 2;
+      }
+
+      // 1. Central hero text animation
       if (heroCenter) {
-        heroCenter.style.transform = `translateX(calc(-50% + ${cx * -8}px)) translateY(${cy * -5}px)`;
+        heroCenter.style.pointerEvents = scrollOpacity < 0.1 ? 'none' : 'auto';
+
+        const px = cx * -8;
+        const py = cy * -5 + scrollY * 0.25; // Sink down as we scroll
+
+        gsap.to(heroCenter, {
+          opacity: scrollOpacity,
+          x: px,
+          y: py,
+          xPercent: -50,
+          duration: 0.15,
+          overwrite: 'auto',
+          ease: 'power2.out'
+        });
+      }
+
+      // 2. Sidebar skill tags animation (fades out as we approach the cube)
+      if (skillTags) {
+        skillTags.style.pointerEvents = scrollOpacity < 0.1 ? 'none' : 'auto';
+
+        gsap.to(skillTags, {
+          opacity: scrollOpacity,
+          x: cx * -4, // subtle horizontal parallax
+          y: cy * -3, // subtle vertical parallax
+          duration: 0.15,
+          overwrite: 'auto',
+          ease: 'power2.out'
+        });
       }
     };
-    window.addEventListener('mousemove', handleMove);
+
+    let lastMouseEvent = null;
+    const handleMouseMove = (e) => {
+      lastMouseEvent = e;
+      updateHeroPositionAndOpacity(e);
+    };
+
+    const handleScroll = () => {
+      updateHeroPositionAndOpacity(lastMouseEvent);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('scroll', handleScroll);
 
     return () => {
       tl.kill();
-      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
