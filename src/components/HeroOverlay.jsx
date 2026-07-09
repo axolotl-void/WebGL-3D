@@ -14,7 +14,25 @@ export default function HeroOverlay() {
   const [typedText, setTypedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
   const bgAudioRef = useRef(null);
-  const [isSoundOn, setIsSoundOn] = useState(false);
+  const [isSoundOn, setIsSoundOn] = useState(true);
+  const sfxPoolRef = useRef([]);
+  const sfxIndexRef = useRef(0);
+
+  // Preload click/hover SFX pool on component mount to prevent lag/CPU spikes
+  useEffect(() => {
+    const pool = [];
+    for (let i = 0; i < 4; i++) {
+      const audio = new Audio('/models/sound/click-elektrik-1.mp3');
+      audio.volume = 0.35;
+      audio.preload = 'auto'; // load/buffer immediately
+      pool.push(audio);
+    }
+    sfxPoolRef.current = pool;
+
+    return () => {
+      sfxPoolRef.current = [];
+    };
+  }, []);
 
   // Typewriter cycle for logo suffix
   useEffect(() => {
@@ -57,13 +75,66 @@ export default function HeroOverlay() {
     };
   }, []);
 
+  // 1. Preload background audio on component mount
+  useEffect(() => {
+    const audio = new Audio('/models/sound/latar-belakang.mp3');
+    audio.loop = true;
+    audio.volume = 0.4;
+    audio.preload = 'auto'; // Begin loading/buffering immediately
+    bgAudioRef.current = audio;
+
+    return () => {
+      if (bgAudioRef.current) {
+        bgAudioRef.current.pause();
+        bgAudioRef.current = null;
+      }
+    };
+  }, []);
+
+  // 2. Sync background audio play/pause with isSoundOn state & bypass autoplay block
+  useEffect(() => {
+    const audio = bgAudioRef.current;
+    if (!audio) return;
+
+    if (isSoundOn) {
+      const playAudio = () => {
+        audio.play()
+          .then(() => {
+            // Successfully playing, clean up interaction listeners
+            window.removeEventListener('click', playAudio);
+            window.removeEventListener('keydown', playAudio);
+            window.removeEventListener('pointerdown', playAudio);
+          })
+          .catch((err) => {
+            console.log('Audio autoplay blocked, waiting for user interaction:', err);
+          });
+      };
+
+      // Try playing immediately (works if browser whitelisted the domain/refresh)
+      playAudio();
+
+      // Fallback interaction listeners for first user gesture
+      window.addEventListener('click', playAudio);
+      window.addEventListener('keydown', playAudio);
+      window.addEventListener('pointerdown', playAudio);
+
+      return () => {
+        window.removeEventListener('click', playAudio);
+        window.removeEventListener('keydown', playAudio);
+        window.removeEventListener('pointerdown', playAudio);
+      };
+    } else {
+      audio.pause();
+    }
+  }, [isSoundOn]);
+
   // Intro animation timeline
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
     const navbar = root.querySelector('.ho-navbar');
-    const skillItems = root.querySelectorAll('.ho-skill-item');
+    const skillItems = root.querySelector('.ho-skill-item');
     const label = root.querySelector('.ho-hero-label');
     const titleWhite = root.querySelector('.ho-title-white');
     const titleCyan = root.querySelector('.ho-title-cyan');
@@ -118,24 +189,20 @@ export default function HeroOverlay() {
 
   // Audio helpers
   const playClickSfx = () => {
-    const sfx = new Audio('/models/sound/click-elektrik-1.mp3');
-    sfx.volume = 0.35;
-    sfx.play().catch(() => {});
+    const pool = sfxPoolRef.current;
+    if (pool.length === 0) return;
+
+    const idx = sfxIndexRef.current;
+    const sfx = pool[idx];
+    if (sfx) {
+      sfx.currentTime = 0; // Reset audio position to start
+      sfx.play().catch(() => {});
+    }
+    sfxIndexRef.current = (idx + 1) % pool.length;
   };
 
   const toggleSound = () => {
-    if (!bgAudioRef.current) {
-      bgAudioRef.current = new Audio('/models/sound/latar-belakang.mp3');
-      bgAudioRef.current.loop = true;
-      bgAudioRef.current.volume = 0.4;
-    }
-    if (isSoundOn) {
-      bgAudioRef.current.pause();
-      setIsSoundOn(false);
-    } else {
-      bgAudioRef.current.play().catch(() => {});
-      setIsSoundOn(true);
-    }
+    setIsSoundOn((prev) => !prev);
   };
 
   return (
