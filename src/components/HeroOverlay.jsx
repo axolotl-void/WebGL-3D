@@ -68,7 +68,6 @@ export default function HeroOverlay() {
     tl.to(buttons, {
       opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.1,
       onComplete() {
-        // Brief glow pulse on buttons
         gsap.to(buttons, {
           boxShadow: '0 0 18px rgba(0,210,255,0.5)', duration: 0.3, yoyo: true, repeat: 1,
         });
@@ -80,7 +79,22 @@ export default function HeroOverlay() {
       opacity: 1, y: 0, duration: 0.6, ease: 'power2.out',
     }, 2.3);
 
-    return () => tl.kill();
+    // ═══════════════════════════════════════════════════════════════
+    // MOUSE PARALLAX on hero text (subtle depth effect)
+    // ═══════════════════════════════════════════════════════════════
+    const heroCenter = root.querySelector('.ho-hero-center');
+    const handleMove = (e) => {
+      const cx = (e.clientX / window.innerWidth - 0.5) * 2;  // -1 to 1
+      const cy = (e.clientY / window.innerHeight - 0.5) * 2;
+      // ponytail: small offset (max ±8px) for subtle feel
+      heroCenter.style.transform = `translateX(calc(-50% + ${cx * -8}px)) translateY(${cy * -5}px)`;
+    };
+    window.addEventListener('mousemove', handleMove);
+
+    return () => {
+      tl.kill();
+      window.removeEventListener('mousemove', handleMove);
+    };
   }, []);
 
   return (

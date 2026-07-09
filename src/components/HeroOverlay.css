@@ -176,6 +176,8 @@
   text-align: center;
   width: 100%;
   max-width: 700px;
+  /* ponytail: smooth transition for mouse parallax */
+  transition: transform 0.15s ease-out;
 }
 
 .ho-hero-label {
@@ -201,12 +203,50 @@
 .ho-title-white {
   display: block;
   color: var(--text-main);
+  /* Shimmer sweep */
+  background: linear-gradient(
+    90deg,
+    var(--text-main) 0%,
+    var(--text-main) 40%,
+    rgba(0, 210, 255, 0.7) 50%,
+    var(--text-main) 60%,
+    var(--text-main) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: hoShimmer 4s ease-in-out infinite;
 }
 
 .ho-title-cyan {
   display: block;
   color: var(--accent-cyan);
-  text-shadow: 0 0 20px rgba(0, 210, 255, 0.35);
+  /* Shimmer sweep + glow pulse */
+  background: linear-gradient(
+    90deg,
+    var(--accent-cyan) 0%,
+    var(--accent-cyan) 40%,
+    #ffffff 50%,
+    var(--accent-cyan) 60%,
+    var(--accent-cyan) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: hoShimmer 4s ease-in-out infinite, hoGlowPulse 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(0, 210, 255, 0.3));
+}
+
+@keyframes hoShimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+@keyframes hoGlowPulse {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.2)); }
+  50%      { filter: drop-shadow(0 0 20px rgba(0, 210, 255, 0.5)); }
 }
 
 /* Divider with diamond */
@@ -254,26 +294,88 @@
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 14px 30px;
-  border: 1px solid var(--accent-cyan);
+  padding: 14px 32px;
+  border: none;
   background: transparent;
   color: var(--text-main);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  transition: all 0.3s ease;
+  position: relative;
+  clip-path: polygon(
+    12px 0%, 100% 0%, 100% calc(100% - 12px),
+    calc(100% - 12px) 100%, 0% 100%, 0% 12px
+  );
+  transition: color 0.3s ease, filter 0.3s ease;
 }
 
+/* Border shape via ::before (same clip-path, slightly larger) */
+.ho-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--accent-cyan), rgba(0, 210, 255, 0.3));
+  clip-path: polygon(
+    12px 0%, 100% 0%, 100% calc(100% - 12px),
+    calc(100% - 12px) 100%, 0% 100%, 0% 12px
+  );
+  z-index: -2;
+}
+
+/* Inner fill (creates the "border" effect by being 1px smaller) */
+.ho-btn::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: rgba(2, 10, 23, 0.85);
+  clip-path: polygon(
+    11px 0%, 100% 0%, 100% calc(100% - 11px),
+    calc(100% - 11px) 100%, 0% 100%, 0% 11px
+  );
+  z-index: -1;
+  transition: background 0.3s ease;
+}
+
+/* Hover: fill with cyan, scanline sweep */
 .ho-btn:hover {
-  background: var(--accent-cyan);
   color: var(--bg-primary);
-  box-shadow: 0 0 20px var(--accent-glow);
+  filter: drop-shadow(0 0 12px rgba(0, 210, 255, 0.4));
+}
+
+.ho-btn:hover::after {
+  background: var(--accent-cyan);
+}
+
+/* Scanline sweep on hover */
+.ho-btn:hover::before {
+  background: linear-gradient(135deg, #fff, var(--accent-cyan));
+  animation: hoBtnScanline 0.6s ease-out;
+}
+
+@keyframes hoBtnScanline {
+  0%   { opacity: 0.5; }
+  50%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* Corner accent mark (top-left cut) */
+.ho-btn-primary::before {
+  background: linear-gradient(135deg, var(--accent-cyan), rgba(0, 210, 255, 0.4));
+}
+
+.ho-btn-secondary::before {
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.5), rgba(0, 210, 255, 0.2));
 }
 
 .ho-btn-arrow {
   font-size: 1.1rem;
   line-height: 1;
+  transition: transform 0.3s ease;
+}
+
+.ho-btn:hover .ho-btn-arrow {
+  transform: translateX(3px);
 }
 
 .ho-btn-icon {
@@ -354,4 +456,10 @@
   0% { transform: translateX(-50%) translateY(0); opacity: 0.3; }
   50% { transform: translateX(-50%) translateY(3px); opacity: 1; }
   100% { transform: translateX(-50%) translateY(0); opacity: 0.3; }
+}
+
+/* ─────────── SCRAMBLE TEXT CHARS ─────────── */
+.ho-scramble-char {
+  display: inline-block;
+  will-change: transform;
 }
