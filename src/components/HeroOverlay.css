@@ -398,23 +398,26 @@
     12px 0%, 100% 0%, 100% calc(100% - 12px),
     calc(100% - 12px) 100%, 0% 100%, 0% 12px
   );
-  transition: color 0.3s ease, filter 0.3s ease;
+  /* ponytail: transform scale transition for tactile active click state */
+  transition: color 0.25s ease, filter 0.25s ease, transform 0.1s ease;
+  transform: scale(1);
 }
 
-/* Border shape via ::before (same clip-path, slightly larger) */
+/* Outer border shape */
 .ho-btn::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, var(--accent-cyan), rgba(0, 210, 255, 0.3));
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.5), rgba(0, 210, 255, 0.2));
   clip-path: polygon(
     12px 0%, 100% 0%, 100% calc(100% - 12px),
     calc(100% - 12px) 100%, 0% 100%, 0% 12px
   );
   z-index: -2;
+  transition: background 0.25s ease;
 }
 
-/* Inner fill (creates the "border" effect by being 1px smaller) */
+/* Inner fill */
 .ho-btn::after {
   content: '';
   position: absolute;
@@ -425,38 +428,45 @@
     calc(100% - 11px) 100%, 0% 100%, 0% 11px
   );
   z-index: -1;
-  transition: background 0.3s ease;
+  transition: background 0.25s ease, box-shadow 0.25s ease;
 }
 
-/* Hover: fill with cyan, scanline sweep */
+/* Hover: glowing cyber glow overlay rather than cheap solid fill */
 .ho-btn:hover {
-  color: var(--bg-primary);
-  filter: drop-shadow(0 0 12px rgba(0, 210, 255, 0.4));
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
+  filter: drop-shadow(0 0 12px rgba(0, 210, 255, 0.5));
+}
+
+.ho-btn:hover::before {
+  background: linear-gradient(135deg, #ffffff, var(--accent-cyan));
 }
 
 .ho-btn:hover::after {
+  background: rgba(0, 210, 255, 0.15);
+  box-shadow: inset 0 0 12px rgba(0, 210, 255, 0.35);
+}
+
+/* Active/Press state: tactile scale down and full-solid cyan flash */
+.ho-btn:active {
+  transform: scale(0.96);
+  color: #020a19;
+  text-shadow: none;
+  filter: drop-shadow(0 0 16px rgba(0, 210, 255, 0.75));
+}
+
+.ho-btn:active::after {
   background: var(--accent-cyan);
+  box-shadow: none;
 }
 
-/* Scanline sweep on hover */
-.ho-btn:hover::before {
-  background: linear-gradient(135deg, #fff, var(--accent-cyan));
-  animation: hoBtnScanline 0.6s ease-out;
-}
-
-@keyframes hoBtnScanline {
-  0%   { opacity: 0.5; }
-  50%  { opacity: 1; }
-  100% { opacity: 1; }
-}
-
-/* Corner accent mark (top-left cut) */
+/* Primary/Secondary border styles */
 .ho-btn-primary::before {
-  background: linear-gradient(135deg, var(--accent-cyan), rgba(0, 210, 255, 0.4));
+  background: linear-gradient(135deg, var(--accent-cyan), rgba(0, 210, 255, 0.35));
 }
 
 .ho-btn-secondary::before {
-  background: linear-gradient(135deg, rgba(0, 210, 255, 0.5), rgba(0, 210, 255, 0.2));
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.4), rgba(0, 210, 255, 0.15));
 }
 
 .ho-btn-arrow {

@@ -152,7 +152,7 @@ export default function HeroOverlay() {
     tl.to(buttons, {
       opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.1,
       onComplete() {
-        gsap.to(buttons, { boxShadow: '0 0 18px rgba(0,210,255,0.5)', duration: 0.3, yoyo: true, repeat: 1 });
+        gsap.to(buttons, { filter: 'drop-shadow(0 0 15px rgba(0,210,255,0.75))', duration: 0.35, yoyo: true, repeat: 1, clearProps: 'filter' });
       },
     }, 1.95);
     tl.to(statusBar, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 2.3);
