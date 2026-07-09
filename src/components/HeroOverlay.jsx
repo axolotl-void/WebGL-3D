@@ -1,9 +1,65 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import './HeroOverlay.css';
 
+const LOGO_SUFFIXES = [
+  ' PRASETYA SADEWA.',
+  '. FRONTEND DEVELOPER',
+  ' COMPUTER SCIENCE',
+  '.DEV',
+];
+
 export default function HeroOverlay() {
   const rootRef = useRef(null);
+  const [typedText, setTypedText] = useState('');
+  const [showCursor, setShowCursor] = useState(true);
+
+  // Typewriter cycle for logo suffix
+  useEffect(() => {
+    let idx = 0;
+    let charIdx = 0;
+    let isDeleting = false;
+    let timer;
+
+    const tick = () => {
+      const current = LOGO_SUFFIXES[idx];
+
+      if (!isDeleting) {
+        // Typing
+        charIdx++;
+        setTypedText(current.slice(0, charIdx));
+        if (charIdx >= current.length) {
+          // Pause before deleting
+          timer = setTimeout(() => { isDeleting = true; tick(); }, 2000);
+          return;
+        }
+        timer = setTimeout(tick, 80);
+      } else {
+        // Deleting
+        charIdx--;
+        setTypedText(current.slice(0, charIdx));
+        if (charIdx <= 0) {
+          isDeleting = false;
+          idx = (idx + 1) % LOGO_SUFFIXES.length;
+          timer = setTimeout(tick, 400);
+          return;
+        }
+        timer = setTimeout(tick, 40);
+      }
+    };
+
+    // Start after intro animation settles
+    const startDelay = setTimeout(tick, 1500);
+
+    // Blinking cursor
+    const cursorInterval = setInterval(() => setShowCursor(v => !v), 530);
+
+    return () => {
+      clearTimeout(startDelay);
+      clearTimeout(timer);
+      clearInterval(cursorInterval);
+    };
+  }, []);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -101,7 +157,10 @@ export default function HeroOverlay() {
     <div className="hero-overlay" ref={rootRef}>
       {/* ═══════ TOP NAVBAR ═══════ */}
       <nav className="ho-navbar">
-        <a href="#home" className="ho-logo">YOGI.DEV<span className="ho-logo-dot">●</span></a>
+        <a href="#home" className="ho-logo">
+          YOGI<span className="ho-logo-suffix">{typedText}</span>
+          <span className={`ho-logo-cursor ${showCursor ? '' : 'off'}`}>|</span>
+        </a>
         <div className="ho-nav-links">
           <a href="#home" className="ho-nav-link active">HOME</a>
           <a href="#about" className="ho-nav-link">ABOUT</a>
@@ -109,9 +168,7 @@ export default function HeroOverlay() {
           <a href="#lab" className="ho-nav-link">LAB</a>
           <a href="#contact" className="ho-nav-link">CONTACT</a>
         </div>
-        <button className="ho-menu-btn" aria-label="Menu">
-          <span /><span /><span />
-        </button>
+
       </nav>
 
       {/* ═══════ LEFT SKILL TAGS ═══════ */}

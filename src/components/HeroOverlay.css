@@ -21,9 +21,9 @@
 
 /* ─────────── NAVBAR ─────────── */
 .ho-navbar {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 22px 40px;
   flex-shrink: 0;
 }
@@ -38,17 +38,30 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  white-space: nowrap;
+  /* ponytail: fixed width prevents nav links from shifting when typewriter text changes */
+  min-width: 280px;
 }
 
-.ho-logo-dot {
+.ho-logo-suffix {
   color: var(--accent-cyan);
-  font-size: 0.5rem;
+}
+
+.ho-logo-cursor {
+  color: var(--accent-cyan);
+  font-weight: 400;
   margin-left: 1px;
-  align-self: flex-start;
-  margin-top: 2px;
+}
+
+.ho-logo-cursor.off {
+  opacity: 0;
 }
 
 .ho-nav-links {
+  position: absolute;
+  right: 80px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   gap: 32px;
 }
@@ -124,6 +137,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  pointer-events: auto;
 }
 
 .ho-skill-item {
@@ -132,8 +146,10 @@
   gap: 12px;
   position: relative;
   padding: 10px 0;
+  cursor: default;
 }
 
+/* ── Dot with staggered pulse ── */
 .ho-skill-dot {
   width: 7px;
   height: 7px;
@@ -142,30 +158,108 @@
   flex-shrink: 0;
   position: relative;
   z-index: 2;
+  animation: hoDotPulse 2.5s ease-in-out infinite;
 }
 
-/* Vertical connecting line between dots */
+/* Stagger each dot's pulse */
+.ho-skill-item:nth-child(1) .ho-skill-dot { animation-delay: 0s; }
+.ho-skill-item:nth-child(2) .ho-skill-dot { animation-delay: 0.5s; }
+.ho-skill-item:nth-child(3) .ho-skill-dot { animation-delay: 1.0s; }
+.ho-skill-item:nth-child(4) .ho-skill-dot { animation-delay: 1.5s; }
+.ho-skill-item:nth-child(5) .ho-skill-dot { animation-delay: 2.0s; }
+
+@keyframes hoDotPulse {
+  0%, 100% { box-shadow: 0 0 6px var(--accent-glow); transform: scale(1); }
+  50%      { box-shadow: 0 0 16px var(--accent-cyan), 0 0 30px var(--accent-glow); transform: scale(1.3); }
+}
+
+/* Radar ping ring on dot */
+.ho-skill-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 1px solid var(--accent-cyan);
+  border-radius: 50%;
+  opacity: 0;
+  animation: hoDotPing 2.5s ease-out infinite;
+}
+
+.ho-skill-item:nth-child(1) .ho-skill-dot::after { animation-delay: 0s; }
+.ho-skill-item:nth-child(2) .ho-skill-dot::after { animation-delay: 0.5s; }
+.ho-skill-item:nth-child(3) .ho-skill-dot::after { animation-delay: 1.0s; }
+.ho-skill-item:nth-child(4) .ho-skill-dot::after { animation-delay: 1.5s; }
+.ho-skill-item:nth-child(5) .ho-skill-dot::after { animation-delay: 2.0s; }
+
+@keyframes hoDotPing {
+  0%   { transform: scale(1); opacity: 0.6; }
+  80%  { transform: scale(3); opacity: 0; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+/* ── Vertical connecting line with scan effect ── */
 .ho-skill-item:not(:last-child)::before {
   content: '';
   position: absolute;
-  left: 3px; /* center of 7px dot */
-  top: calc(10px + 7px); /* below dot */
+  left: 3px;
+  top: calc(10px + 7px);
   width: 1px;
   height: calc(100% - 7px);
-  background: rgba(0, 210, 255, 0.2);
+  background: rgba(0, 210, 255, 0.15);
+  overflow: hidden;
+}
+
+/* Scan light running down the connector */
+.ho-skill-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: calc(10px + 7px);
+  width: 3px;
+  height: 12px;
+  background: linear-gradient(to bottom, transparent, var(--accent-cyan), transparent);
+  border-radius: 1px;
+  animation: hoScanLine 2.5s ease-in-out infinite;
+  opacity: 0.7;
+}
+
+.ho-skill-item:nth-child(1)::after { animation-delay: 0s; }
+.ho-skill-item:nth-child(2)::after { animation-delay: 0.5s; }
+.ho-skill-item:nth-child(3)::after { animation-delay: 1.0s; }
+.ho-skill-item:nth-child(4)::after { animation-delay: 1.5s; }
+
+@keyframes hoScanLine {
+  0%   { top: calc(10px + 7px); opacity: 0; }
+  20%  { opacity: 0.8; }
+  80%  { opacity: 0.8; }
+  100% { top: calc(100% - 5px); opacity: 0; }
 }
 
 .ho-skill-line {
-  display: none; /* handled by ::before pseudo */
+  display: none;
 }
 
+/* ── Text with hover interaction ── */
 .ho-skill-text {
   font-family: var(--font-display);
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--text-main);
+  transition: transform 0.3s ease, color 0.3s ease, text-shadow 0.3s ease;
 }
+
+.ho-skill-item:hover .ho-skill-text {
+  transform: translateX(6px);
+  color: var(--accent-cyan);
+  text-shadow: 0 0 10px var(--accent-glow);
+}
+
+.ho-skill-item:hover .ho-skill-dot {
+  animation: none;
+  box-shadow: 0 0 20px var(--accent-cyan), 0 0 40px var(--accent-glow);
+  transform: scale(1.5);
+}
+
 
 /* ─────────── CENTER HERO ─────────── */
 .ho-hero-center {
