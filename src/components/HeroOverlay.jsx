@@ -13,6 +13,8 @@ export default function HeroOverlay() {
   const rootRef = useRef(null);
   const [typedText, setTypedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
+  const bgAudioRef = useRef(null);
+  const [isSoundOn, setIsSoundOn] = useState(false);
 
   // Typewriter cycle for logo suffix
   useEffect(() => {
@@ -25,17 +27,14 @@ export default function HeroOverlay() {
       const current = LOGO_SUFFIXES[idx];
 
       if (!isDeleting) {
-        // Typing
         charIdx++;
         setTypedText(current.slice(0, charIdx));
         if (charIdx >= current.length) {
-          // Pause before deleting
           timer = setTimeout(() => { isDeleting = true; tick(); }, 2000);
           return;
         }
         timer = setTimeout(tick, 80);
       } else {
-        // Deleting
         charIdx--;
         setTypedText(current.slice(0, charIdx));
         if (charIdx <= 0) {
@@ -48,10 +47,7 @@ export default function HeroOverlay() {
       }
     };
 
-    // Start after intro animation settles
     const startDelay = setTimeout(tick, 1500);
-
-    // Blinking cursor
     const cursorInterval = setInterval(() => setShowCursor(v => !v), 530);
 
     return () => {
@@ -61,11 +57,11 @@ export default function HeroOverlay() {
     };
   }, []);
 
+  // Intro animation timeline
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
-    // Grab elements
     const navbar = root.querySelector('.ho-navbar');
     const skillItems = root.querySelectorAll('.ho-skill-item');
     const label = root.querySelector('.ho-hero-label');
@@ -77,7 +73,6 @@ export default function HeroOverlay() {
     const buttons = root.querySelectorAll('.ho-btn');
     const statusBar = root.querySelector('.ho-status-bar');
 
-    // Initial hidden states
     gsap.set(navbar, { opacity: 0, y: -20 });
     gsap.set(skillItems, { opacity: 0, x: -30 });
     gsap.set(label, { opacity: 0, letterSpacing: '0.05em' });
@@ -89,61 +84,29 @@ export default function HeroOverlay() {
 
     const tl = gsap.timeline({ delay: 0.3 });
 
-    // 0.3s — navbar
     tl.to(navbar, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 0);
-
-    // 0.6s — sidebar skill tags stagger
-    tl.to(skillItems, {
-      opacity: 1, x: 0, duration: 0.6, ease: 'power2.out', stagger: 0.1,
-    }, 0.3);
-
-    // 1.0s — label
-    tl.to(label, {
-      opacity: 1, letterSpacing: '0.25em', duration: 0.8, ease: 'power2.out',
-    }, 0.7);
-
-    // 1.2s — title line 1
-    tl.to(titleWhite, {
-      opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, ease: 'power3.out',
-    }, 0.9);
-
-    // 1.45s — title line 2
-    tl.to(titleCyan, {
-      opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, ease: 'power3.out',
-    }, 1.15);
-
-    // 1.8s — divider
-    tl.to([dividerLines, dividerDiamond], {
-      opacity: 1, scaleX: 1, duration: 0.5, ease: 'power2.out',
-    }, 1.5);
-
-    // 2.0s — description
+    tl.to(skillItems, { opacity: 1, x: 0, duration: 0.6, ease: 'power2.out', stagger: 0.1 }, 0.3);
+    tl.to(label, { opacity: 1, letterSpacing: '0.25em', duration: 0.8, ease: 'power2.out' }, 0.7);
+    tl.to(titleWhite, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, ease: 'power3.out' }, 0.9);
+    tl.to(titleCyan, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, ease: 'power3.out' }, 1.15);
+    tl.to([dividerLines, dividerDiamond], { opacity: 1, scaleX: 1, duration: 0.5, ease: 'power2.out' }, 1.5);
     tl.to(desc, { opacity: 1, duration: 0.6, ease: 'power2.out' }, 1.7);
-
-    // 2.25s — buttons
     tl.to(buttons, {
       opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.1,
       onComplete() {
-        gsap.to(buttons, {
-          boxShadow: '0 0 18px rgba(0,210,255,0.5)', duration: 0.3, yoyo: true, repeat: 1,
-        });
+        gsap.to(buttons, { boxShadow: '0 0 18px rgba(0,210,255,0.5)', duration: 0.3, yoyo: true, repeat: 1 });
       },
     }, 1.95);
+    tl.to(statusBar, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 2.3);
 
-    // 2.6s — bottom status bar
-    tl.to(statusBar, {
-      opacity: 1, y: 0, duration: 0.6, ease: 'power2.out',
-    }, 2.3);
-
-    // ═══════════════════════════════════════════════════════════════
-    // MOUSE PARALLAX on hero text (subtle depth effect)
-    // ═══════════════════════════════════════════════════════════════
+    // Mouse parallax on hero text
     const heroCenter = root.querySelector('.ho-hero-center');
     const handleMove = (e) => {
-      const cx = (e.clientX / window.innerWidth - 0.5) * 2;  // -1 to 1
+      const cx = (e.clientX / window.innerWidth - 0.5) * 2;
       const cy = (e.clientY / window.innerHeight - 0.5) * 2;
-      // ponytail: small offset (max ±8px) for subtle feel
-      heroCenter.style.transform = `translateX(calc(-50% + ${cx * -8}px)) translateY(${cy * -5}px)`;
+      if (heroCenter) {
+        heroCenter.style.transform = `translateX(calc(-50% + ${cx * -8}px)) translateY(${cy * -5}px)`;
+      }
     };
     window.addEventListener('mousemove', handleMove);
 
@@ -153,28 +116,49 @@ export default function HeroOverlay() {
     };
   }, []);
 
+  // Audio helpers
+  const playClickSfx = () => {
+    const sfx = new Audio('/models/sound/click-elektrik-1.mp3');
+    sfx.volume = 0.35;
+    sfx.play().catch(() => {});
+  };
+
+  const toggleSound = () => {
+    if (!bgAudioRef.current) {
+      bgAudioRef.current = new Audio('/models/sound/latar-belakang.mp3');
+      bgAudioRef.current.loop = true;
+      bgAudioRef.current.volume = 0.4;
+    }
+    if (isSoundOn) {
+      bgAudioRef.current.pause();
+      setIsSoundOn(false);
+    } else {
+      bgAudioRef.current.play().catch(() => {});
+      setIsSoundOn(true);
+    }
+  };
+
   return (
     <div className="hero-overlay" ref={rootRef}>
       {/* ═══════ TOP NAVBAR ═══════ */}
       <nav className="ho-navbar">
-        <a href="#home" className="ho-logo">
+        <a href="#home" className="ho-logo" onMouseEnter={playClickSfx}>
           YOGI<span className="ho-logo-suffix">{typedText}</span>
           <span className={`ho-logo-cursor ${showCursor ? '' : 'off'}`}>|</span>
         </a>
         <div className="ho-nav-links">
-          <a href="#home" className="ho-nav-link active">HOME</a>
-          <a href="#about" className="ho-nav-link">ABOUT</a>
-          <a href="#projects" className="ho-nav-link">PROJECTS</a>
-          <a href="#lab" className="ho-nav-link">LAB</a>
-          <a href="#contact" className="ho-nav-link">CONTACT</a>
+          <a href="#home" className="ho-nav-link active" onClick={playClickSfx} onMouseEnter={playClickSfx}>HOME</a>
+          <a href="#about" className="ho-nav-link" onClick={playClickSfx} onMouseEnter={playClickSfx}>ABOUT</a>
+          <a href="#projects" className="ho-nav-link" onClick={playClickSfx} onMouseEnter={playClickSfx}>PROJECTS</a>
+          <a href="#lab" className="ho-nav-link" onClick={playClickSfx} onMouseEnter={playClickSfx}>LAB</a>
+          <a href="#contact" className="ho-nav-link" onClick={playClickSfx} onMouseEnter={playClickSfx}>CONTACT</a>
         </div>
-
       </nav>
 
       {/* ═══════ LEFT SKILL TAGS ═══════ */}
       <div className="ho-skill-tags">
         {['WEBGL', 'FRONTEND', 'THREE.JS', 'CREATIVE DEV', 'UI MOTION'].map((tag) => (
-          <div className="ho-skill-item" key={tag}>
+          <div className="ho-skill-item" key={tag} onMouseEnter={playClickSfx}>
             <span className="ho-skill-dot" />
             <span className="ho-skill-text">{tag}</span>
           </div>
@@ -198,10 +182,10 @@ export default function HeroOverlay() {
           motion design, and interactive web technology.
         </p>
         <div className="ho-hero-cta">
-          <button className="ho-btn ho-btn-primary">
+          <button className="ho-btn ho-btn-primary" onClick={playClickSfx} onMouseEnter={playClickSfx}>
             VIEW PROJECTS <span className="ho-btn-arrow">›</span>
           </button>
-          <button className="ho-btn ho-btn-secondary">
+          <button className="ho-btn ho-btn-secondary" onClick={playClickSfx} onMouseEnter={playClickSfx}>
             CONTACT ME <span className="ho-btn-icon">✉</span>
           </button>
         </div>
@@ -209,9 +193,14 @@ export default function HeroOverlay() {
 
       {/* ═══════ BOTTOM STATUS BAR ═══════ */}
       <div className="ho-status-bar">
-        <div className="ho-status-item">
+        <div
+          className="ho-status-item"
+          onClick={toggleSound}
+          onMouseEnter={playClickSfx}
+          style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+        >
           <span className="ho-status-icon">⫶</span>
-          <span>SOUND <strong>OFF</strong></span>
+          <span>SOUND <strong>{isSoundOn ? 'ON' : 'OFF'}</strong></span>
         </div>
         <div className="ho-status-item">
           <span className="ho-status-dot green" />
