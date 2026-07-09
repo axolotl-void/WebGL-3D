@@ -89,7 +89,7 @@ export default function UnifiedScene() {
   const targetScrollRef = useRef(0);
   const lastZoneRef = useRef(1); // Track current zone to trigger instant teleportation
 
-  // Set up keyboard listeners for free cam movement and create HTML Debug HUD
+  // Set up keyboard listeners for free cam movement
   useEffect(() => {
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase();
@@ -104,32 +104,9 @@ export default function UnifiedScene() {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
-    // Create HUD element
-    const el = document.createElement('div');
-    el.id = 'camera-debug-hud';
-    el.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      z-index: 100000;
-      color: #00ffff;
-      background: rgba(2, 10, 23, 0.95);
-      border: 1px solid #00d9ff;
-      border-radius: 6px;
-      padding: 15px;
-      font-family: monospace;
-      font-size: 12px;
-      line-height: 1.6;
-      box-shadow: 0 0 20px rgba(0, 217, 255, 0.35);
-      min-width: 285px;
-      pointer-events: none;
-    `;
-    document.body.appendChild(el);
-
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      el.remove();
     };
   }, []);
 
@@ -435,23 +412,7 @@ export default function UnifiedScene() {
     const bgBlend = ease(Math.min(Math.max((scroll - 0.3) / 0.4, 0), 1));
     state.scene.background.copy(bgColor1).lerp(bgColor2, bgBlend);
 
-    // Update Debug HUD overlay
-    const debugHud = document.getElementById('camera-debug-hud');
-    if (debugHud) {
-      debugHud.innerHTML = `
-        <div style="font-weight: bold; color: #ff0055; border-bottom: 1px solid #00d9ff; padding-bottom: 5px; margin-bottom: 8px; font-size: 14px; letter-spacing: 1px;">CAMERA LEVEL DEBUGGER</div>
-        <div>Mode: ${isFreeCam ? '<span style="color: #39ff14; font-weight: bold;">FREE CAM (ACTIVE)</span>' : '<span style="color: #ffcc00; font-weight: bold;">SCROLL TRACKING</span>'}</div>
-        <div style="margin-top: 6px;">Position: [${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)}]</div>
-        <div>Rotation (Euler): [${camera.rotation.x.toFixed(2)}, ${camera.rotation.y.toFixed(2)}, ${camera.rotation.z.toFixed(2)}]</div>
-        <div style="margin-top: 10px; border-top: 1px dashed rgba(0, 217, 255, 0.4); padding-top: 6px; color: #88aaff; font-size: 11px;">
-          Press <strong>C</strong> to Toggle Free Cam<br/>
-          Move: <strong>W/S</strong> (Forward/Back)<br/>
-          Move: <strong>A/D</strong> (Left/Right)<br/>
-          Move: <strong>Q/E</strong> (Up/Down)<br/>
-          Look: <strong>Drag Mouse</strong> to Orbit
-        </div>
-      `;
-    }
+
   });
 
   return (
