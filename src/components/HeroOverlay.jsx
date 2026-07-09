@@ -15,22 +15,16 @@ export default function HeroOverlay() {
   const [showCursor, setShowCursor] = useState(true);
   const bgAudioRef = useRef(null);
   const [isSoundOn, setIsSoundOn] = useState(true);
-  const sfxPoolRef = useRef([]);
-  const sfxIndexRef = useRef(0);
+  const clickSfxRef = useRef(null);
 
-  // Preload click/hover SFX pool on component mount to prevent lag/CPU spikes
+  // Preload click SFX on mount
   useEffect(() => {
-    const pool = [];
-    for (let i = 0; i < 4; i++) {
-      const audio = new Audio('/models/sound/click-elektrik-1.mp3');
-      audio.volume = 0.35;
-      audio.preload = 'auto'; // load/buffer immediately
-      pool.push(audio);
-    }
-    sfxPoolRef.current = pool;
+    clickSfxRef.current = new Audio('/models/sound/click-elektrik-1.mp3');
+    clickSfxRef.current.volume = 0.35;
+    clickSfxRef.current.preload = 'auto';
 
     return () => {
-      sfxPoolRef.current = [];
+      clickSfxRef.current = null;
     };
   }, []);
 
@@ -189,16 +183,12 @@ export default function HeroOverlay() {
 
   // Audio helpers
   const playClickSfx = () => {
-    const pool = sfxPoolRef.current;
-    if (pool.length === 0) return;
-
-    const idx = sfxIndexRef.current;
-    const sfx = pool[idx];
+    if (!isSoundOn) return;
+    const sfx = clickSfxRef.current;
     if (sfx) {
       sfx.currentTime = 0; // Reset audio position to start
       sfx.play().catch(() => {});
     }
-    sfxIndexRef.current = (idx + 1) % pool.length;
   };
 
   const toggleSound = () => {
@@ -209,23 +199,23 @@ export default function HeroOverlay() {
     <div className="hero-overlay" ref={rootRef}>
       {/* ═══════ TOP NAVBAR ═══════ */}
       <nav className="ho-navbar">
-        <a href="#home" className="ho-logo" onMouseEnter={playClickSfx}>
+        <a href="#home" className="ho-logo" onClick={playClickSfx}>
           YOGI<span className="ho-logo-suffix">{typedText}</span>
           <span className={`ho-logo-cursor ${showCursor ? '' : 'off'}`}>|</span>
         </a>
         <div className="ho-nav-links">
-          <a href="#home" className="ho-nav-link active" onClick={playClickSfx} onMouseEnter={playClickSfx}>HOME</a>
-          <a href="#about" className="ho-nav-link" onClick={playClickSfx} onMouseEnter={playClickSfx}>ABOUT</a>
-          <a href="#projects" className="ho-nav-link" onClick={playClickSfx} onMouseEnter={playClickSfx}>PROJECTS</a>
-          <a href="#lab" className="ho-nav-link" onClick={playClickSfx} onMouseEnter={playClickSfx}>LAB</a>
-          <a href="#contact" className="ho-nav-link" onClick={playClickSfx} onMouseEnter={playClickSfx}>CONTACT</a>
+          <a href="#home" className="ho-nav-link active" onClick={playClickSfx}>HOME</a>
+          <a href="#about" className="ho-nav-link" onClick={playClickSfx}>ABOUT</a>
+          <a href="#projects" className="ho-nav-link" onClick={playClickSfx}>PROJECTS</a>
+          <a href="#lab" className="ho-nav-link" onClick={playClickSfx}>LAB</a>
+          <a href="#contact" className="ho-nav-link" onClick={playClickSfx}>CONTACT</a>
         </div>
       </nav>
 
       {/* ═══════ LEFT SKILL TAGS ═══════ */}
       <div className="ho-skill-tags">
         {['WEBGL', 'FRONTEND', 'THREE.JS', 'CREATIVE DEV', 'UI MOTION'].map((tag) => (
-          <div className="ho-skill-item" key={tag} onMouseEnter={playClickSfx}>
+          <div className="ho-skill-item" key={tag}>
             <span className="ho-skill-dot" />
             <span className="ho-skill-text">{tag}</span>
           </div>
@@ -249,10 +239,10 @@ export default function HeroOverlay() {
           motion design, and interactive web technology.
         </p>
         <div className="ho-hero-cta">
-          <button className="ho-btn ho-btn-primary" onClick={playClickSfx} onMouseEnter={playClickSfx}>
+          <button className="ho-btn ho-btn-primary" onClick={playClickSfx}>
             VIEW PROJECTS <span className="ho-btn-arrow">›</span>
           </button>
-          <button className="ho-btn ho-btn-secondary" onClick={playClickSfx} onMouseEnter={playClickSfx}>
+          <button className="ho-btn ho-btn-secondary" onClick={playClickSfx}>
             CONTACT ME <span className="ho-btn-icon">✉</span>
           </button>
         </div>
@@ -262,8 +252,10 @@ export default function HeroOverlay() {
       <div className="ho-status-bar">
         <div
           className="ho-status-item"
-          onClick={toggleSound}
-          onMouseEnter={playClickSfx}
+          onClick={() => {
+            toggleSound();
+            playClickSfx();
+          }}
           style={{ cursor: 'pointer', pointerEvents: 'auto' }}
         >
           <span className="ho-status-icon">⫶</span>
