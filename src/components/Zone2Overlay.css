@@ -1,0 +1,307 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Zone2Overlay — HUD overlay for Zone 2 (About / Digital Profile)
+   Matches the user's design mockup with left panel + 4 cube labels
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.zone2-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  font-family: var(--font-display);
+  color: var(--text-main);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.zone2-overlay.visible {
+  opacity: 1;
+}
+
+/* ─────────── LEFT PANEL (Glassmorphic Card) ─────────── */
+.z2-left-panel {
+  position: absolute;
+  left: 40px;
+  top: 50%;
+  transform: translateY(-55%);
+  width: 280px;
+  background: rgba(2, 10, 23, 0.65);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 28px 24px;
+  clip-path: polygon(
+    0% 0%, calc(100% - 14px) 0%, 100% 14px,
+    100% 100%, 14px 100%, 0% calc(100% - 14px)
+  );
+  box-shadow:
+    0 0 25px rgba(0, 210, 255, 0.06),
+    inset 0 0 20px rgba(0, 210, 255, 0.03);
+}
+
+/* Subtle scan-line overlay on the panel */
+.z2-left-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 210, 255, 0.015) 2px,
+    rgba(0, 210, 255, 0.015) 4px
+  );
+  pointer-events: none;
+}
+
+/* Panel header row */
+.z2-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.z2-panel-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--accent-cyan);
+}
+
+.z2-panel-deco {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: rgba(0, 210, 255, 0.4);
+}
+
+/* Title */
+.z2-panel-title {
+  font-size: 2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  margin-bottom: 16px;
+}
+
+.z2-panel-title-white {
+  display: block;
+  color: var(--text-main);
+}
+
+.z2-panel-title-cyan {
+  display: block;
+  color: var(--accent-cyan);
+  filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.3));
+}
+
+/* Description text */
+.z2-panel-desc {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+/* Explore button */
+.z2-explore-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-main);
+  background: transparent;
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  padding: 12px 24px;
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  transition: color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.z2-explore-btn:hover {
+  color: #fff;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 15px rgba(0, 210, 255, 0.25), inset 0 0 10px rgba(0, 210, 255, 0.1);
+  text-shadow: 0 0 8px rgba(0, 210, 255, 0.5);
+}
+
+.z2-explore-btn:active {
+  transform: scale(0.96);
+  background: rgba(0, 210, 255, 0.15);
+}
+
+.z2-explore-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  font-size: 0.9rem;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.z2-explore-btn:hover .z2-explore-arrow {
+  transform: translateX(3px);
+  border-color: var(--accent-cyan);
+}
+
+/* Vertical progress track on left edge of panel */
+.z2-panel-track {
+  position: absolute;
+  left: -1px;
+  top: 30%;
+  height: 40%;
+  width: 3px;
+  background: rgba(0, 210, 255, 0.1);
+  overflow: hidden;
+}
+
+.z2-panel-track::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 30%;
+  background: linear-gradient(to bottom, transparent, var(--accent-cyan), transparent);
+  animation: z2TrackScan 3s ease-in-out infinite;
+}
+
+@keyframes z2TrackScan {
+  0%   { top: -30%; }
+  100% { top: 100%; }
+}
+
+/* ─────────── CUBE LABELS (4 labels above the cubes) ─────────── */
+.z2-cube-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.z2-cube-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  pointer-events: none;
+}
+
+/* Icon */
+.z2-label-icon {
+  font-size: 1.3rem;
+  color: var(--accent-cyan);
+  margin-bottom: 4px;
+  filter: drop-shadow(0 0 6px rgba(0, 210, 255, 0.4));
+  line-height: 1;
+}
+
+/* Number */
+.z2-label-num {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+/* Title */
+.z2-label-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+/* Sub-items list */
+.z2-label-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.z2-label-item {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ─────────── CUBE LABEL POSITIONS ─────────── 
+   ponytail: hard-coded screen positions to match the camera lock at scroll 0.6245.
+   These will need adjustment if the camera endpoint changes.
+*/
+
+/* 01 IDENTITY — leftmost small cube */
+.z2-cube-label:nth-child(1) {
+  bottom: 48%;
+  left: 26%;
+}
+
+/* 02 EDUCATION — center-left cube */
+.z2-cube-label:nth-child(2) {
+  bottom: 50%;
+  left: 40%;
+}
+
+/* 03 SKILLS — center-right large cubes */
+.z2-cube-label:nth-child(3) {
+  bottom: 52%;
+  left: 56%;
+}
+
+/* 04 ACHIEVEMENTS — rightmost cube */
+.z2-cube-label:nth-child(4) {
+  bottom: 50%;
+  left: 72%;
+}
+
+/* ─────────── INTRO ANIMATIONS ─────────── */
+.z2-left-panel,
+.z2-cube-label {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+.zone2-overlay.visible .z2-left-panel {
+  animation: z2FadeUp 0.7s ease-out 0.1s forwards;
+}
+
+.zone2-overlay.visible .z2-cube-label:nth-child(1) {
+  animation: z2FadeUp 0.5s ease-out 0.25s forwards;
+}
+.zone2-overlay.visible .z2-cube-label:nth-child(2) {
+  animation: z2FadeUp 0.5s ease-out 0.4s forwards;
+}
+.zone2-overlay.visible .z2-cube-label:nth-child(3) {
+  animation: z2FadeUp 0.5s ease-out 0.55s forwards;
+}
+.zone2-overlay.visible .z2-cube-label:nth-child(4) {
+  animation: z2FadeUp 0.5s ease-out 0.7s forwards;
+}
+
+@keyframes z2FadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

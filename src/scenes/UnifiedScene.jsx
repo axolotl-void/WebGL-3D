@@ -195,10 +195,13 @@ export default function UnifiedScene() {
 
     // ═══════════════════════════════════════════════════════════════════════
     // SCROLL INTERPOLATION (smooth responsive lerp)
+    // Clamp the target scroll to 0.6245 so the camera target stops exactly
+    // at the end of Zone 2 and responds instantly when scrolling back up.
     // ═══════════════════════════════════════════════════════════════════════
+    const targetScroll = Math.min(targetScrollRef.current, 0.6245);
     scrollRef.current = THREE.MathUtils.lerp(
       scrollRef.current,
-      targetScrollRef.current,
+      targetScroll,
       0.025
     );
     const scroll = scrollRef.current;
@@ -297,10 +300,25 @@ export default function UnifiedScene() {
       }
     } else {
       // Phase 3: Freeze in front of Portal (scroll 0.75 to 1.00)
+      // (Bypassed & commented out for now as cameraScroll is locked at 0.6245, will be re-used when transitioning to Zone 3)
+      /*
       const startPos = zone2PositionsNew[zone2PositionsNew.length - 1];
       const startRot = zone2QuaternionsNew[zone2QuaternionsNew.length - 1];
       targetPos.copy(startPos);
       targetRot.copy(startRot);
+      */
+
+      // Freeze camera at the exact coordinates of scroll 0.6245 instead
+      const cameraScroll = 0.6245;
+      const t = (cameraScroll - 0.35) / (zone2EndScroll - 0.35);
+      const localT = (t - 0.5) / 0.5;
+      targetPos.copy(zone2PosCurveNew.getPointAt(localT));
+
+      const numSegments = zone2QuaternionsNew.length - 1;
+      const scaledT = localT * numSegments;
+      const index = Math.min(Math.floor(scaledT), numSegments - 1);
+      const segmentT = scaledT - index;
+      targetRot.slerpQuaternions(zone2QuaternionsNew[index], zone2QuaternionsNew[index + 1], ease(segmentT));
     }
 
     if (isFreeCam) {
@@ -479,7 +497,8 @@ export default function UnifiedScene() {
 
       {isFreeCam && <OrbitControls ref={controlsRef} enableDamping={false} />}
 
-      {/* ════════════ COORDINATE DEBUG HUD ════════════ */}
+      {/* ════════════ COORDINATE DEBUG HUD (Bypassed/Hidden) ════════════ */}
+      {/*
       <Html fullscreen pointerEvents="none">
         <div style={{
           position: 'absolute',
@@ -528,6 +547,7 @@ export default function UnifiedScene() {
           </div>
         </div>
       </Html>
+      */}
     </>
   );
 }
