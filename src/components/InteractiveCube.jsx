@@ -1,5 +1,6 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 
 // ── Shaders Copied from TechCube.jsx for Identical Visual Styling ──
@@ -119,12 +120,45 @@ for (let iy = 0; iy < COLS_Y; iy++) {
   }
 }
 
+const CUBE_LABEL_MAPPING = {
+  0: {
+    icon: '👤',
+    num: '01',
+    title: 'IDENTITY',
+    items: ['PROFILE', 'DEVELOPER', 'INDONESIA'],
+    lineHeight: '140px'
+  },
+  2: {
+    icon: '🎓',
+    num: '02',
+    title: 'EDUCATION',
+    items: ['COMPUTER SCIENCE', 'UBBG', '2022 — PRESENT'],
+    lineHeight: '100px'
+  },
+  4: {
+    icon: '⟨/⟩',
+    num: '03',
+    title: 'SKILLS',
+    items: ['REACT', 'NEXT.JS', 'WEBGL'],
+    lineHeight: '130px'
+  },
+  1: {
+    icon: '🏆',
+    num: '04',
+    title: 'ACHIEVEMENTS',
+    items: ['CERTIFICATES', 'AWARDS', 'ARCHIVE'],
+    lineHeight: '110px'
+  }
+};
+
 export default function InteractiveCube({ position, index, onClick }) {
   const groupRef = useRef();
+  const labelGroupRef = useRef();
   const pieceRefs = useRef([]);
   const pointLightRef = useRef();
   const [hovered, setHovered] = useState(false);
   const explodeTRef = useRef(0);
+  const [isVisible, setIsVisible] = useState(false);
 
   const cyan = useMemo(() => new THREE.Color('#00bbff'), []);
   const hotWhite = useMemo(() => new THREE.Color('#c0edff'), []);
@@ -132,6 +166,33 @@ export default function InteractiveCube({ position, index, onClick }) {
   // Sync phase and speed to make each cube unique
   const randomPhase = useMemo(() => Math.random() * Math.PI * 2, []);
   const randomSpeed = useMemo(() => 0.5 + Math.random() * 0.5, []);
+
+  const labelData = CUBE_LABEL_MAPPING[index];
+
+  // Scroll listener for smooth HUD reveal
+  useEffect(() => {
+    if (!labelData) return;
+
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      if (max <= 0) return;
+      const ratio = window.scrollY / max;
+
+      const SHOW_RATIO = 0.45;
+      const HIDE_RATIO = 0.38;
+
+      if (ratio >= SHOW_RATIO) {
+        setIsVisible(true);
+      } else if (ratio < HIDE_RATIO) {
+        setIsVisible(false);
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [labelData]);
 
   // Shared uniforms for the pieces
   const outerUniforms = useMemo(() => ({
@@ -149,12 +210,19 @@ export default function InteractiveCube({ position, index, onClick }) {
     explodeTRef.current += (target - explodeTRef.current) * 0.12; 
     const eT = explodeTRef.current;
 
+    const bob = Math.sin(t * 1.5 + randomPhase) * 0.05;
+
     if (groupRef.current) {
       // Bobbing up and down (smaller amplitude for ground cubes)
-      groupRef.current.position.y = position[1] + Math.sin(t * 1.5 + randomPhase) * 0.05;
+      groupRef.current.position.y = bob;
       // Rotation of the entire mini cube
       groupRef.current.rotation.x = t * 0.15 * randomSpeed;
       groupRef.current.rotation.y = t * 0.25 * randomSpeed;
+    }
+
+    if (labelGroupRef.current) {
+      // Match the tech cube's bobbing perfectly
+      labelGroupRef.current.position.y = bob;
     }
 
     // Explode pieces outward on hover (smaller distance to match smaller size)
@@ -179,45 +247,74 @@ export default function InteractiveCube({ position, index, onClick }) {
   });
 
   return (
-    <group ref={groupRef} position={position}>
-      {/* Invisible hitbox for click/hover (keep it slightly larger for easy interaction) */}
-      <mesh
-        onPointerOver={(e) => {
-          e.stopPropagation();
-          setHovered(true);
-          document.body.style.cursor = 'pointer';
-        }}
-        onPointerOut={(e) => {
-          setHovered(false);
-          document.body.style.cursor = 'default';
-        }}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          if (onClick) onClick(index);
-        }}
-      >
-        <boxGeometry args={[0.6, 0.6, 0.6]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
-
-      {/* Render 12 pieces forming the mini tech cube */}
-      {piecesData.map((p, i) => (
+    <group position={position}>
+      {/* 1. Rotating Tech Cube Model Group */}
+      <group ref={groupRef}>
+        {/* Invisible hitbox for click/hover */}
         <mesh
-          key={i}
-          ref={el => { pieceRefs.current[i] = el; }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            setHovered(true);
+            document.body.style.cursor = 'pointer';
+          }}
+          onPointerOut={(e) => {
+            setHovered(false);
+            document.body.style.cursor = 'default';
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            if (onClick) onClick(index);
+          }}
         >
-          <boxGeometry args={[PIECE_W - GAP, PIECE_H - GAP, PIECE_D - GAP]} />
-          <shaderMaterial
-            uniforms={outerUniforms}
-            vertexShader={cubeVert}
-            fragmentShader={cubeFrag}
-            depthWrite={true}
-            side={THREE.FrontSide}
-          />
+          <boxGeometry args={[0.6, 0.6, 0.6]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
-      ))}
 
+        {/* Render 12 pieces forming the mini tech cube */}
+        {piecesData.map((p, i) => (
+          <mesh
+            key={i}
+            ref={el => { pieceRefs.current[i] = el; }}
+          >
+            <boxGeometry args={[PIECE_W - GAP, PIECE_H - GAP, PIECE_D - GAP]} />
+            <shaderMaterial
+              uniforms={outerUniforms}
+              vertexShader={cubeVert}
+              fragmentShader={cubeFrag}
+              depthWrite={true}
+              side={THREE.FrontSide}
+            />
+          </mesh>
+        ))}
+      </group>
 
+      {/* 2. Non-rotating Hologram HUD Label (Drei HTML component projected on top surface) */}
+      {labelData && (
+        <group ref={labelGroupRef}>
+          <Html
+            position={[0, 0.3, 0]}
+            pointerEvents="none"
+          >
+            <div className={`z2-3d-connector-container ${isVisible ? 'visible' : ''}`}>
+              <div className="z2-3d-label-content">
+                <span className="z2-label-icon">{labelData.icon}</span>
+                <span className="z2-label-num">{labelData.num}</span>
+                <span className="z2-label-title">{labelData.title}</span>
+                <div className="z2-label-items">
+                  {labelData.items.map((item) => (
+                    <span className="z2-label-item" key={item}>{item}</span>
+                  ))}
+                </div>
+              </div>
+              <div 
+                className="z2-3d-connector-line" 
+                style={{ height: labelData.lineHeight }}
+              />
+              <div className="z2-3d-connector-dot" />
+            </div>
+          </Html>
+        </group>
+      )}
 
       {/* Dynamic Point Light */}
       <pointLight ref={pointLightRef} intensity={0.5} distance={5} decay={2} color="#00bbff" />

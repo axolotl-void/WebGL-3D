@@ -6,33 +6,6 @@ import './Zone2Overlay.css';
 const SHOW_RATIO = 0.45;
 const HIDE_RATIO = 0.38;
 
-const CUBE_DATA = [
-  {
-    icon: '👤',
-    num: '01',
-    title: 'IDENTITY',
-    items: ['PROFILE', 'DEVELOPER', 'INDONESIA'],
-  },
-  {
-    icon: '🎓',
-    num: '02',
-    title: 'EDUCATION',
-    items: ['COMPUTER SCIENCE', 'UBBG', '2022 — PRESENT'],
-  },
-  {
-    icon: '⟨/⟩',
-    num: '03',
-    title: 'SKILLS',
-    items: ['REACT', 'NEXT.JS', 'WEBGL'],
-  },
-  {
-    icon: '🏆',
-    num: '04',
-    title: 'ACHIEVEMENTS',
-    items: ['CERTIFICATES', 'AWARDS', 'ARCHIVE'],
-  },
-];
-
 export default function Zone2Overlay() {
   const rootRef = useRef(null);
   const visibleRef = useRef(false);
@@ -83,22 +56,6 @@ export default function Zone2Overlay() {
           EXPLORE
           <span className="z2-explore-arrow">→</span>
         </button>
-      </div>
-
-      {/* ═══════ CUBE LABELS ═══════ */}
-      <div className="z2-cube-labels">
-        {CUBE_DATA.map((cube) => (
-          <div className="z2-cube-label" key={cube.num}>
-            <span className="z2-label-icon">{cube.icon}</span>
-            <span className="z2-label-num">{cube.num}</span>
-            <span className="z2-label-title">{cube.title}</span>
-            <div className="z2-label-items">
-              {cube.items.map((item) => (
-                <span className="z2-label-item" key={item}>{item}</span>
-              ))}
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );

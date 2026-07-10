@@ -18,12 +18,10 @@
   opacity: 1;
 }
 
-/* ─────────── LEFT PANEL (Glassmorphic Card) ─────────── */
 .z2-left-panel {
   position: absolute;
   left: 40px;
-  top: 50%;
-  transform: translateY(-55%);
+  top: 130px;
   width: 280px;
   background: rgba(2, 10, 23, 0.65);
   border: 1px solid rgba(0, 210, 255, 0.2);
@@ -180,20 +178,36 @@
   100% { top: 100%; }
 }
 
-/* ─────────── CUBE LABELS (4 labels above the cubes) ─────────── */
-.z2-cube-labels {
-  position: absolute;
-  inset: 0;
+/* ─────────── 3D PROJECTED HOLOGRAM CONNECTORS ─────────── */
+.z2-3d-connector-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* Align the bottom of the container (where the dot is) with the 3D anchor point */
+  transform: translate(0, -100%);
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.5s ease;
   pointer-events: none;
+  font-family: var(--font-display);
 }
 
-.z2-cube-label {
-  position: absolute;
+/* Slide in from bottom when visible */
+.z2-3d-connector-container.visible {
+  opacity: 1;
+  transform: translate(0, -100%) translateY(0);
+}
+
+.z2-3d-connector-container:not(.visible) {
+  transform: translate(0, -100%) translateY(15px);
+  opacity: 0;
+}
+
+.z2-3d-label-content {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  pointer-events: none;
 }
 
 /* Icon */
@@ -242,66 +256,34 @@
   line-height: 1.5;
 }
 
-/* ─────────── CUBE LABEL POSITIONS ─────────── 
-   ponytail: hard-coded screen positions to match the camera lock at scroll 0.6245.
-   These will need adjustment if the camera endpoint changes.
-*/
-
-/* 01 IDENTITY — leftmost small cube */
-.z2-cube-label:nth-child(1) {
-  bottom: 48%;
-  left: 26%;
+.z2-3d-connector-line {
+  width: 1px;
+  background: linear-gradient(to bottom, rgba(0, 210, 255, 0.05), var(--accent-cyan));
+  box-shadow: 0 0 6px var(--accent-glow);
+  margin-left: 0;
 }
 
-/* 02 EDUCATION — center-left cube */
-.z2-cube-label:nth-child(2) {
-  bottom: 50%;
-  left: 40%;
+.z2-3d-connector-dot {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transform: translate(-50%, 50%); /* Centered directly on the 3D anchor point */
+  width: 6px;
+  height: 6px;
+  background: #ffffff;
+  border: 1px solid var(--accent-cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent-cyan), 0 0 20px var(--accent-glow);
+  animation: connectorDotPulse 2s infinite ease-in-out;
 }
 
-/* 03 SKILLS — center-right large cubes */
-.z2-cube-label:nth-child(3) {
-  bottom: 52%;
-  left: 56%;
-}
-
-/* 04 ACHIEVEMENTS — rightmost cube */
-.z2-cube-label:nth-child(4) {
-  bottom: 50%;
-  left: 72%;
-}
-
-/* ─────────── INTRO ANIMATIONS ─────────── */
-.z2-left-panel,
-.z2-cube-label {
-  opacity: 0;
-  transform: translateY(18px);
-}
-
-.zone2-overlay.visible .z2-left-panel {
-  animation: z2FadeUp 0.7s ease-out 0.1s forwards;
-}
-
-.zone2-overlay.visible .z2-cube-label:nth-child(1) {
-  animation: z2FadeUp 0.5s ease-out 0.25s forwards;
-}
-.zone2-overlay.visible .z2-cube-label:nth-child(2) {
-  animation: z2FadeUp 0.5s ease-out 0.4s forwards;
-}
-.zone2-overlay.visible .z2-cube-label:nth-child(3) {
-  animation: z2FadeUp 0.5s ease-out 0.55s forwards;
-}
-.zone2-overlay.visible .z2-cube-label:nth-child(4) {
-  animation: z2FadeUp 0.5s ease-out 0.7s forwards;
-}
-
-@keyframes z2FadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
+@keyframes connectorDotPulse {
+  0%, 100% {
+    transform: translate(-50%, 50%) scale(1);
+    box-shadow: 0 0 8px var(--accent-cyan);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  50% {
+    transform: translate(-50%, 50%) scale(1.3);
+    box-shadow: 0 0 16px var(--accent-cyan), 0 0 28px var(--accent-glow);
   }
 }
