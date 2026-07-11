@@ -6,6 +6,9 @@ import PortalTransition from './effects/PortalTransition';
 import HeroOverlay from './components/HeroOverlay';
 import Zone2Overlay from './components/Zone2Overlay';
 import IdentityPanel from './components/IdentityPanel';
+import EducationPanel from './components/EducationPanel';
+import SkillsPanel from './components/SkillsPanel';
+import AchievementsPanel from './components/AchievementsPanel';
 import './App.css';
 
 function App() {
@@ -37,6 +40,9 @@ function App() {
       <HeroOverlay />
       <Zone2Overlay />
       <IdentityPanel />
+      <EducationPanel />
+      <SkillsPanel />
+      <AchievementsPanel />
 
       {/* Tall invisible div for scroll-driven camera */}
       <div className="scroll-container" style={{ pointerEvents: 'none' }}>

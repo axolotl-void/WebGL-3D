@@ -517,3 +517,380 @@
   letter-spacing: 0.05em;
   color: rgba(0, 210, 255, 0.45);
 }
+
+/* ── Education Panel Layout ── */
+.edu-content-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.edu-main-card {
+  background: rgba(2, 10, 23, 0.4);
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  border-left: 3px solid #00d2ff;
+  padding: 24px 28px;
+  position: relative;
+  overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  animation: idSlideUpReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.edu-card-tag {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #00d2ff;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.edu-degree {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 6px 0;
+  letter-spacing: 0.05em;
+}
+
+.edu-institution {
+  font-size: 0.95rem;
+  color: rgba(165, 194, 235, 0.8);
+  margin: 0 0 14px 0;
+}
+
+.edu-period-badge {
+  display: inline-block;
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  padding: 6px 12px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #00d2ff;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%);
+}
+
+.edu-period-label {
+  color: rgba(0, 210, 255, 0.5);
+  margin-right: 4px;
+}
+
+.edu-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .edu-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.edu-stat-box {
+  background: rgba(2, 10, 23, 0.3);
+  border: 1px solid rgba(0, 210, 255, 0.1);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+  animation: idSlideUpReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+.edu-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.edu-stat-title {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: rgba(141, 164, 196, 0.7);
+  text-transform: uppercase;
+}
+
+.edu-stat-value.green-glow {
+  color: #39ff14;
+  text-shadow: 0 0 8px rgba(57, 255, 20, 0.5);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.edu-progress-bar-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.edu-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0088cc, #00d2ff);
+  box-shadow: 0 0 8px rgba(0, 210, 255, 0.5);
+  border-radius: 3px;
+  transform-origin: left;
+  animation: eduProgressGrow 1.5s cubic-bezier(0.16, 1, 0.3, 1) both 0.5s;
+}
+
+@keyframes eduProgressGrow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.edu-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: monospace;
+  font-size: 0.68rem;
+  color: rgba(165, 194, 235, 0.6);
+}
+
+.edu-stat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edu-list-item {
+  font-size: 0.85rem;
+  color: rgba(165, 194, 235, 0.85);
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+/* ── Skills Panel Layout ── */
+.skills-content-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.skills-category-box {
+  background: rgba(2, 10, 23, 0.35);
+  border: 1px solid rgba(0, 210, 255, 0.12);
+  padding: 24px 30px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  animation: idSlideUpReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.skills-category-box:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.skills-category-box:nth-child(2) {
+  animation-delay: 0.25s;
+}
+
+.skills-cat-title {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #00d2ff;
+  margin: 0 0 20px 0;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(0, 210, 255, 0.15);
+  padding-bottom: 8px;
+}
+
+.skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skill-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skill-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+
+.skill-name {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.skill-percentage {
+  color: #00d2ff;
+  font-family: monospace;
+  font-weight: bold;
+}
+
+.skill-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 210, 255, 0.06);
+  border: 1px solid rgba(0, 210, 255, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.skill-bar-fill {
+  height: 100%;
+  width: var(--skill-level);
+  background: linear-gradient(90deg, #005f73, #00d2ff);
+  box-shadow: 0 0 10px rgba(0, 210, 255, 0.6);
+  border-radius: 3px;
+  transform-origin: left;
+  animation: skillProgressGrow 1.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.skills-category-box:nth-child(1) .skill-bar-fill {
+  animation-delay: 0.3s;
+}
+.skills-category-box:nth-child(2) .skill-bar-fill {
+  animation-delay: 0.45s;
+}
+
+@keyframes skillProgressGrow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* ── Achievements Panel Layout ── */
+.ach-content-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ach-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .ach-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ach-card {
+  background: rgba(2, 10, 23, 0.4);
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  padding: 22px 26px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  animation: idSlideUpReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ach-card:nth-child(1) { animation-delay: 0.1s; }
+.ach-card:nth-child(2) { animation-delay: 0.25s; }
+.ach-card:nth-child(3) { animation-delay: 0.4s; }
+
+.ach-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.ach-badge {
+  font-family: var(--font-display);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.ach-badge.certificate {
+  background: rgba(0, 210, 255, 0.1);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  color: #00d2ff;
+}
+
+.ach-badge.award {
+  background: rgba(255, 170, 0, 0.1);
+  border: 1px solid rgba(255, 170, 0, 0.3);
+  color: #ffaa00;
+}
+
+.ach-date {
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: rgba(141, 164, 196, 0.5);
+}
+
+.ach-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 6px 0;
+  letter-spacing: 0.02em;
+}
+
+.ach-issuer {
+  font-size: 0.82rem;
+  color: rgba(165, 194, 235, 0.7);
+  margin: 0 0 20px 0;
+}
+
+.ach-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(0, 210, 255, 0.08);
+  padding-top: 12px;
+  margin-top: auto;
+}
+
+.ach-id {
+  font-family: monospace;
+  font-size: 0.65rem;
+  color: rgba(141, 164, 196, 0.4);
+}
+
+.ach-btn-verify {
+  background: rgba(0, 210, 255, 0.05);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  color: #00d2ff;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%);
+}
+
+.ach-btn-verify:hover {
+  background: rgba(0, 210, 255, 0.15);
+  border-color: #00d2ff;
+  box-shadow: 0 0 8px rgba(0, 210, 255, 0.3);
+  transform: scale(1.03);
+}
+
+.ach-btn-verify:active {
+  transform: scale(0.97);
+}
+
+.ach-btn-prefix {
+  margin-right: 4px;
+}
