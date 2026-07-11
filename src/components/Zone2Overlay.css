@@ -187,7 +187,8 @@
   /* Align the bottom of the container (where the dot is) with the 3D anchor point */
   transform: translate(0, -100%);
   opacity: 0;
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  visibility: hidden;
+  transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
   pointer-events: none;
   font-family: var(--font-display);
 }
@@ -195,12 +196,14 @@
 /* Slide in from bottom when visible */
 .z2-3d-connector-container.visible {
   opacity: 1;
+  visibility: visible;
   transform: translate(0, -100%) translateY(0);
 }
 
 .z2-3d-connector-container:not(.visible) {
   transform: translate(0, -100%) translateY(15px);
   opacity: 0;
+  visibility: hidden;
 }
 
 .z2-3d-label-content {

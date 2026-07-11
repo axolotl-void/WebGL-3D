@@ -151,14 +151,14 @@ const CUBE_LABEL_MAPPING = {
   }
 };
 
-export default function InteractiveCube({ position, index, onClick }) {
+export default function InteractiveCube({ position, index, onClick, scrollRef }) {
   const groupRef = useRef();
   const labelGroupRef = useRef();
   const pieceRefs = useRef([]);
   const pointLightRef = useRef();
+  const containerRef = useRef();
   const [hovered, setHovered] = useState(false);
   const explodeTRef = useRef(0);
-  const [isVisible, setIsVisible] = useState(false);
 
   const cyan = useMemo(() => new THREE.Color('#00bbff'), []);
   const hotWhite = useMemo(() => new THREE.Color('#c0edff'), []);
@@ -168,31 +168,6 @@ export default function InteractiveCube({ position, index, onClick }) {
   const randomSpeed = useMemo(() => 0.5 + Math.random() * 0.5, []);
 
   const labelData = CUBE_LABEL_MAPPING[index];
-
-  // Scroll listener for smooth HUD reveal
-  useEffect(() => {
-    if (!labelData) return;
-
-    const onScroll = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      if (max <= 0) return;
-      const ratio = window.scrollY / max;
-
-      const SHOW_RATIO = 0.45;
-      const HIDE_RATIO = 0.38;
-
-      if (ratio >= SHOW_RATIO) {
-        setIsVisible(true);
-      } else if (ratio < HIDE_RATIO) {
-        setIsVisible(false);
-      }
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [labelData]);
 
   // Shared uniforms for the pieces
   const outerUniforms = useMemo(() => ({
@@ -243,6 +218,19 @@ export default function InteractiveCube({ position, index, onClick }) {
 
     if (pointLightRef.current) {
       pointLightRef.current.intensity = 0.5 + eT * 1.5;
+    }
+
+    if (containerRef.current && scrollRef) {
+      const scroll = scrollRef.current;
+      const SHOW_RATIO = 0.45;
+      const HIDE_RATIO = 0.38;
+      
+      const isCurrentlyVisible = containerRef.current.classList.contains('visible');
+      if (scroll >= SHOW_RATIO && !isCurrentlyVisible) {
+        containerRef.current.classList.add('visible');
+      } else if (scroll < HIDE_RATIO && isCurrentlyVisible) {
+        containerRef.current.classList.remove('visible');
+      }
     }
   });
 
@@ -295,7 +283,7 @@ export default function InteractiveCube({ position, index, onClick }) {
             position={[0, 0.3, 0]}
             pointerEvents="none"
           >
-            <div className={`z2-3d-connector-container ${isVisible ? 'visible' : ''}`}>
+            <div ref={containerRef} className="z2-3d-connector-container">
               <div className="z2-3d-label-content">
                 <span className="z2-label-icon">{labelData.icon}</span>
                 <span className="z2-label-num">{labelData.num}</span>

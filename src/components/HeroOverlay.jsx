@@ -181,7 +181,7 @@ export default function HeroOverlay() {
 
       // 1. Central hero text animation
       if (heroCenter) {
-        heroCenter.style.pointerEvents = scrollOpacity < 0.1 ? 'none' : 'auto';
+        heroCenter.style.pointerEvents = 'none';
 
         const px = cx * -8;
         const py = cy * -5 + scrollY * 0.25; // Sink down as we scroll

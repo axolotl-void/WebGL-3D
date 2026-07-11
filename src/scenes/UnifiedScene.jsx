@@ -481,6 +481,7 @@ export default function UnifiedScene() {
             key={idx}
             index={idx}
             position={pos}
+            scrollRef={scrollRef}
           />
         ))}
         <Portal 
