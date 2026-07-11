@@ -5,6 +5,7 @@ import UnifiedScene from './scenes/UnifiedScene';
 import PortalTransition from './effects/PortalTransition';
 import HeroOverlay from './components/HeroOverlay';
 import Zone2Overlay from './components/Zone2Overlay';
+import IdentityPanel from './components/IdentityPanel';
 import './App.css';
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
       {/* Hero HUD Overlay */}
       <HeroOverlay />
       <Zone2Overlay />
+      <IdentityPanel />
 
       {/* Tall invisible div for scroll-driven camera */}
       <div className="scroll-container" style={{ pointerEvents: 'none' }}>

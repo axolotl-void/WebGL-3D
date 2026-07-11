@@ -159,6 +159,7 @@ export default function InteractiveCube({ position, index, onClick, scrollRef })
   const containerRef = useRef();
   const [hovered, setHovered] = useState(false);
   const explodeTRef = useRef(0);
+  const hitboxRef = useRef();
 
   const cyan = useMemo(() => new THREE.Color('#00bbff'), []);
   const hotWhite = useMemo(() => new THREE.Color('#c0edff'), []);
@@ -220,6 +221,13 @@ export default function InteractiveCube({ position, index, onClick, scrollRef })
       pointLightRef.current.intensity = 0.5 + eT * 1.5;
     }
 
+    // ponytail: dynamic hitbox scaling. 0.45 fits the unexploded 0.35 cube snugly. 
+    // 1.0 expands it to 0.95 to capture pointer movements on the exploded pieces.
+    if (hitboxRef.current) {
+      const targetScale = hovered ? 1.0 : 0.45;
+      hitboxRef.current.scale.setScalar(targetScale);
+    }
+
     if (containerRef.current && scrollRef) {
       const scroll = scrollRef.current;
       const SHOW_RATIO = 0.45;
@@ -236,28 +244,30 @@ export default function InteractiveCube({ position, index, onClick, scrollRef })
 
   return (
     <group position={position}>
+      {/* Invisible hitbox for click/hover - placed outside the rotating group to stay static and large enough to cover the exploded pieces */}
+      <mesh
+        ref={hitboxRef}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          setHovered(true);
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={(e) => {
+          setHovered(false);
+          document.body.style.cursor = 'default';
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          if (onClick) onClick(index);
+          window.dispatchEvent(new CustomEvent('cube-click', { detail: index }));
+        }}
+      >
+        <boxGeometry args={[0.95, 0.95, 0.95]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
       {/* 1. Rotating Tech Cube Model Group */}
       <group ref={groupRef}>
-        {/* Invisible hitbox for click/hover */}
-        <mesh
-          onPointerOver={(e) => {
-            e.stopPropagation();
-            setHovered(true);
-            document.body.style.cursor = 'pointer';
-          }}
-          onPointerOut={(e) => {
-            setHovered(false);
-            document.body.style.cursor = 'default';
-          }}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            if (onClick) onClick(index);
-          }}
-        >
-          <boxGeometry args={[0.6, 0.6, 0.6]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-        </mesh>
-
         {/* Render 12 pieces forming the mini tech cube */}
         {piecesData.map((p, i) => (
           <mesh
