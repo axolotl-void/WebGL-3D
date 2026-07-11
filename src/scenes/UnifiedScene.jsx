@@ -96,6 +96,10 @@ export default function UnifiedScene() {
   const targetScrollRef = useRef(0);
   const lastZoneRef = useRef(1); // Track current zone to trigger instant teleportation
 
+  // ponytail: window-level mouse tracking bypasses HTML overlay pointer-event capture
+  const mouseRef = useRef({ x: 0, y: 0 });
+  const mouseTargetRef = useRef({ x: 0, y: 0 });
+
   // Set up keyboard listeners for free cam movement
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -185,6 +189,16 @@ export default function UnifiedScene() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // ponytail: mousemove on window so HTML overlays can't block the signal
+  useEffect(() => {
+    const onMouseMove = (e) => {
+      mouseTargetRef.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseTargetRef.current.y = -((e.clientY / window.innerHeight) * 2 - 1);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    return () => window.removeEventListener('mousemove', onMouseMove);
+  }, []);
+
   // Smoothstep easing helper
   const ease = (t) => t * t * (3.0 - 2.0 * t);
 
@@ -246,10 +260,14 @@ export default function UnifiedScene() {
     const targetPos = new THREE.Vector3();
     const targetRot = new THREE.Quaternion();
 
+    // Smooth lerp mouse position (window-level, immune to overlay capture)
+    mouseRef.current.x += (mouseTargetRef.current.x - mouseRef.current.x) * 0.08;
+    mouseRef.current.y += (mouseTargetRef.current.y - mouseRef.current.y) * 0.08;
+
     // Fade out mouse parallax as we leave Zone 1
     const parallaxFade = 1.0 - ease(Math.min(Math.max((scroll - 0.15) / 0.15, 0), 1));
-    const mouseX = state.pointer.x * 1.0 * parallaxFade;
-    const mouseY = state.pointer.y * 0.6 * parallaxFade;
+    const mouseX = mouseRef.current.x * 1.0 * parallaxFade;
+    const mouseY = mouseRef.current.y * 0.6 * parallaxFade;
 
     // The peak of the portal transition happens at scroll = 0.24.
     // We instantly teleport the camera to Zone 2 when scroll passes 0.24,
