@@ -52,7 +52,14 @@ export default function Zone2Overlay() {
           Identity, education, skills,<br />
           and achievements archive.
         </p>
-        <button className="z2-explore-btn">
+        <button 
+          className="z2-explore-btn"
+          onClick={() => {
+            if (localStorage.getItem('isSoundOn') !== 'false') {
+              new Audio('/models/sound/click-elektrik-1.mp3').play().catch(() => {});
+            }
+          }}
+        >
           EXPLORE
           <span className="z2-explore-arrow">→</span>
         </button>

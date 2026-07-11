@@ -375,6 +375,12 @@ export default function UnifiedScene() {
         if (currentZone !== lastZoneRef.current) {
           camera.position.set(targetPos.x + mouseX, targetPos.y + mouseY, targetPos.z);
           camera.quaternion.copy(targetRot);
+          
+          // Play transition whoosh sound when crossing the portal boundary
+          if (localStorage.getItem('isSoundOn') !== 'false') {
+            new Audio('/models/sound/suara-masuk-wrap.wav').play().catch(() => {});
+          }
+          
           lastZoneRef.current = currentZone;
         } else {
           // ponytail: copy target position and rotation instantly to follow spline path exactly without cutting corners (avoiding geometry clipping)

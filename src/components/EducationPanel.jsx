@@ -10,6 +10,9 @@ export default function EducationPanel() {
 
   const handleClose = useCallback(() => {
     if (isClosing) return;
+    if (localStorage.getItem('isSoundOn') !== 'false') {
+      new Audio('/models/sound/click-keluar.mp3').play().catch(() => {});
+    }
     setIsClosing(true);
     setTimeout(() => {
       setIsOpen(false);
@@ -112,6 +115,11 @@ export default function EducationPanel() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="edu-map-blueprint"
+                onClick={() => {
+                  if (localStorage.getItem('isSoundOn') !== 'false') {
+                    new Audio('/models/sound/click-elektrik-1.mp3').play().catch(() => {});
+                  }
+                }}
               >
                 <div className="edu-map-radar">
                   <div className="edu-map-circle outer" />

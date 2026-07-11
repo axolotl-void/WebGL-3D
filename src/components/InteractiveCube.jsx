@@ -258,6 +258,9 @@ export default function InteractiveCube({ position, index, onClick, scrollRef })
         }}
         onPointerDown={(e) => {
           e.stopPropagation();
+          if (localStorage.getItem('isSoundOn') !== 'false') {
+            new Audio('/models/sound/click-elektrik-1.mp3').play().catch(() => {});
+          }
           if (onClick) onClick(index);
           window.dispatchEvent(new CustomEvent('cube-click', { detail: index }));
         }}

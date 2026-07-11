@@ -10,6 +10,9 @@ export default function IdentityPanel() {
 
   const handleClose = useCallback(() => {
     if (isClosing) return;
+    if (localStorage.getItem('isSoundOn') !== 'false') {
+      new Audio('/models/sound/click-keluar.mp3').play().catch(() => {});
+    }
     setIsClosing(true);
     setTimeout(() => {
       setIsOpen(false);

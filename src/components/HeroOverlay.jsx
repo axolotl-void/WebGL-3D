@@ -13,8 +13,10 @@ export default function HeroOverlay() {
   const rootRef = useRef(null);
   const [typedText, setTypedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
+  const [isSoundOn, setIsSoundOn] = useState(() => {
+    return localStorage.getItem('isSoundOn') !== 'false';
+  });
   const bgAudioRef = useRef(null);
-  const [isSoundOn, setIsSoundOn] = useState(true);
   const clickSfxRef = useRef(null);
 
   // Preload click SFX on mount
@@ -246,7 +248,12 @@ export default function HeroOverlay() {
   };
 
   const toggleSound = () => {
-    setIsSoundOn((prev) => !prev);
+    setIsSoundOn((prev) => {
+      const next = !prev;
+      localStorage.setItem('isSoundOn', String(next));
+      window.dispatchEvent(new Event('sound-toggle'));
+      return next;
+    });
   };
 
   return (
