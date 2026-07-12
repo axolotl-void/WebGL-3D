@@ -9,7 +9,7 @@ const LOGO_SUFFIXES = [
   '.DEV',
 ];
 
-export default function HeroOverlay() {
+export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
   const rootRef = useRef(null);
   const [typedText, setTypedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
@@ -330,9 +330,16 @@ export default function HeroOverlay() {
           <span className="ho-scroll-icon" />
           <span>SCROLL TO EXPLORE</span>
         </div>
-        <div className="ho-status-item">
-          <span className="ho-status-dot green" />
-          <span>AVAILABLE FOR PROJECTS</span>
+        <div 
+          className="ho-status-item"
+          onClick={() => {
+            if (onToggleDebug) onToggleDebug();
+            playClickSfx();
+          }}
+          style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+        >
+          <span className={`ho-status-dot ${showDebugConsole ? 'green' : 'red'}`} />
+          <span>KORDINAT</span>
         </div>
       </div>
     </div>

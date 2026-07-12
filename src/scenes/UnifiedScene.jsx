@@ -7,6 +7,7 @@ import SnowyMountain from '../components/SnowyMountain';
 import SecondMountain from '../components/SecondMountain';
 import InteractiveCube from '../components/InteractiveCube';
 import Portal from '../components/Portal';
+import AxolotlLogo from '../components/AxolotlLogo';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ambient Sparkling Particles (Floating Dust Field)
@@ -55,6 +56,70 @@ function ParticleField({ count = 250 }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Rising Blue Particles — spawn from ground, float upward
+// ponytail: spread wide (120x80) so they're visible from 400 units away
+// ─────────────────────────────────────────────────────────────────────────────
+function RisingParticles({ count = 300, scrollRef }) {
+  const pointsRef = useRef();
+
+  const [positions, speeds, drifts] = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const spd = new Float32Array(count);
+    const dft = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      // Spawn in a box in front of the camera (centered at [380, -4, -66])
+      pos[i * 3]     = 380 + (Math.random() - 0.5) * 60;  // X: 350 to 410
+      pos[i * 3 + 1] = -4 + Math.random() * 15;           // Y: -4 to 11
+      pos[i * 3 + 2] = -66 + (Math.random() - 0.5) * 60;  // Z: -96 to -36
+      spd[i] = 0.03 + Math.random() * 0.08;
+      dft[i] = Math.random() * Math.PI * 2;
+    }
+    return [pos, spd, dft];
+  }, [count]);
+
+  useFrame((state) => {
+    if (!pointsRef.current) return;
+    
+    const scroll = scrollRef ? scrollRef.current : 0;
+    if (scroll < 0.75) {
+      pointsRef.current.visible = false;
+      return;
+    }
+    pointsRef.current.visible = true;
+
+    const posAttr = pointsRef.current.geometry.attributes.position;
+    const t = state.clock.getElapsedTime();
+    for (let i = 0; i < count; i++) {
+      // Rise upward
+      posAttr.array[i * 3 + 1] += speeds[i] * 0.2;
+      // Reset when too high
+      if (posAttr.array[i * 3 + 1] > 15) {
+        posAttr.array[i * 3 + 1] = -4;
+        posAttr.array[i * 3] = 380 + (Math.random() - 0.5) * 60;
+        posAttr.array[i * 3 + 2] = -66 + (Math.random() - 0.5) * 60;
+      }
+      // Gentle horizontal drift
+      posAttr.array[i * 3] += Math.sin(t * 0.5 + drifts[i]) * 0.008;
+      posAttr.array[i * 3 + 2] += Math.cos(t * 0.3 + drifts[i]) * 0.005;
+    }
+    posAttr.needsUpdate = true;
+    pointsRef.current.material.opacity = 0.85;
+  });
+
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.08} color="#00d2ff" transparent opacity={0.85}
+        depthWrite={false} blending={THREE.AdditiveBlending}
+      />
+    </points>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Unified Scene: Single 3D world with seamless camera flight
 //
 // Zone 1 (Z: +16 to -12)  → SnowyMountain + TechCube + Particles
@@ -86,6 +151,7 @@ export default function UnifiedScene({
   const secondMountainRef = useRef();
   const zone1Ref = useRef();
   const zone2Ref = useRef();
+  const starsGroupRef = useRef();
 
   const [isFreeCam, setIsFreeCam] = useState(false);
   const controlsRef = useRef();
@@ -235,6 +301,12 @@ export default function UnifiedScene({
   useFrame((state) => {
     const time = state.clock.getElapsedTime();
 
+    // Slow cosmic rotation for the background stars to make the space feel dynamic and alive
+    if (starsGroupRef.current) {
+      starsGroupRef.current.rotation.y = time * 0.003;
+      starsGroupRef.current.rotation.x = time * 0.001;
+    }
+
 
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -271,16 +343,20 @@ export default function UnifiedScene({
       u.uRevealProgress.value = ease(Math.min(introT / 0.6, 1.0));
       u.uWireProgress.value = Math.min(introT / 0.5, 1.0);
 
-      // Fade out mountain 1 as scroll goes from 0.15 to 0.30 (before camera clips it)
-      const fadeStart = 0.15;
-      const fadeEnd = 0.30;
-      u.uOpacity.value = 1.0 - THREE.MathUtils.mapLinear(
-        THREE.MathUtils.clamp(scroll, fadeStart, fadeEnd),
-        fadeStart,
-        fadeEnd,
-        0.0,
-        1.0
-      );
+      // Fade out mountain 1 as scroll goes from 0.15 to 0.30, but restore to 1.0 in Zone 3 (scroll >= 0.75)
+      if (scroll >= 0.75) {
+        u.uOpacity.value = 1.0;
+      } else {
+        const fadeStart = 0.15;
+        const fadeEnd = 0.30;
+        u.uOpacity.value = 1.0 - THREE.MathUtils.mapLinear(
+          THREE.MathUtils.clamp(scroll, fadeStart, fadeEnd),
+          fadeStart,
+          fadeEnd,
+          0.0,
+          1.0
+        );
+      }
     }
 
     // Cube appears after terrain is mostly revealed
@@ -301,10 +377,18 @@ export default function UnifiedScene({
     mouseRef.current.x += (mouseTargetRef.current.x - mouseRef.current.x) * 0.08;
     mouseRef.current.y += (mouseTargetRef.current.y - mouseRef.current.y) * 0.08;
 
-    // Fade out mouse parallax as we leave Zone 1
-    const parallaxFade = 1.0 - ease(Math.min(Math.max((scroll - 0.15) / 0.15, 0), 1));
-    const mouseX = mouseRef.current.x * 1.0 * parallaxFade;
-    const mouseY = mouseRef.current.y * 0.6 * parallaxFade;
+    // Fade out mouse parallax as we leave Zone 1, restore in Zone 3
+    const zone1Fade = 1.0 - ease(Math.min(Math.max((scroll - 0.15) / 0.15, 0), 1));
+    const zone3Fade = ease(Math.min(Math.max((scroll - 0.75) / 0.10, 0), 1));
+    // ponytail: Zone 3 gets wider parallax (2.5/1.5) so the camera feels more responsive
+    const pMulX = zone3Fade > 0 ? 2.5 : 1.0;
+    const pMulY = zone3Fade > 0 ? 1.5 : 0.6;
+    const parallaxFade = Math.max(zone1Fade, zone3Fade);
+    const mouseX = mouseRef.current.x * pMulX * parallaxFade;
+    const mouseY = mouseRef.current.y * pMulY * parallaxFade;
+
+    // ponytail: subtle breathing idle so the camera never feels frozen
+    const breathY = scroll >= 0.75 ? Math.sin(time * 0.8) * 0.08 : 0;
 
     // The peak of the portal transition happens at scroll = 0.24.
     // We instantly teleport the camera to Zone 2 when scroll passes 0.24,
@@ -407,7 +491,7 @@ export default function UnifiedScene({
         } else {
           // ponytail: copy target position and rotation instantly to follow spline path exactly without cutting corners (avoiding geometry clipping)
           camera.position.x = targetPos.x + mouseX;
-          camera.position.y = targetPos.y + mouseY;
+          camera.position.y = targetPos.y + mouseY + breathY;
           camera.position.z = targetPos.z;
           camera.quaternion.copy(targetRot);
         }
@@ -439,11 +523,11 @@ export default function UnifiedScene({
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ZONE 1: Turn off rendering entirely when camera reaches Zone 2
+    // ZONE 1: Turn off rendering entirely when camera reaches Zone 2, restore in Zone 3
     // ponytail: prevents GPU overheating by stopping background draw calls
     // ═══════════════════════════════════════════════════════════════════════
     if (zone1Ref.current) {
-      zone1Ref.current.visible = isFreeCam || (scroll < 0.24);
+      zone1Ref.current.visible = isFreeCam || (scroll < 0.24) || (scroll >= 0.75);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -524,8 +608,15 @@ export default function UnifiedScene({
         <ParticleField count={200} />
       </group>
 
-      {/* Global Sky Stars */}
-      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+      {/* Global Sky Stars with slow cosmic rotation */}
+      <group ref={starsGroupRef}>
+        <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1.5} />
+      </group>
+
+      {/* ════════════ ZONE 3 OBJECTS ════════════ */}
+      {/* ponytail: rising blue particles at the mountain origin, visible from Zone 3 camera */}
+      <RisingParticles count={350} scrollRef={scrollRef} />
+      <AxolotlLogo scrollRef={scrollRef} />
 
       {/* ════════════ ZONE 2 OBJECTS ════════════ */}
       <group ref={zone2Ref} position={[0, 0, ZONE2_Z]} visible={false}>
