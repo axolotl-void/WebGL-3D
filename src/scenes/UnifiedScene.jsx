@@ -73,7 +73,13 @@ const PORTAL_POS = [3.50, -3.10, -7.05];
 const PORTAL_SCALE = 0.0060;
 const PORTAL_ROT_Y = 4.60;
 
-export default function UnifiedScene() {
+export default function UnifiedScene({
+  debugScrollRef,
+  debugPosRef,
+  debugRotRef,
+  debugZoneRef,
+  debugFreeCamRef
+}) {
   const { camera } = useThree();
   const cubeGroupRef = useRef();
   const mountainRef = useRef();
@@ -85,16 +91,10 @@ export default function UnifiedScene() {
   const controlsRef = useRef();
   const keysPressed = useRef({});
 
-  // Debug HUD Refs
-  const debugScrollRef = useRef();
-  const debugPosRef = useRef();
-  const debugRotRef = useRef();
-  const debugZoneRef = useRef();
-  const debugFreeCamRef = useRef();
-
   const scrollRef = useRef(0);
   const targetScrollRef = useRef(0);
   const lastZoneRef = useRef(1); // Track current zone to trigger instant teleportation
+  const isExploredRef = useRef(false);
 
   // ponytail: window-level mouse tracking bypasses HTML overlay pointer-event capture
   const mouseRef = useRef({ x: 0, y: 0 });
@@ -178,15 +178,45 @@ export default function UnifiedScene() {
     [-0.20, -3.21, -6.50]  // Kubus 4
   ], []);
 
-  // Track browser scroll
+  // Track browser scroll and clamp scrollbar when locked
   useEffect(() => {
     const onScroll = () => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       if (max <= 0) return;
-      targetScrollRef.current = window.scrollY / max;
+
+      let rawScroll = window.scrollY / max;
+      const maxClamp = isExploredRef.current ? 1.0 : 0.6245;
+
+      if (rawScroll > maxClamp) {
+        window.scrollTo(0, maxClamp * max);
+        rawScroll = maxClamp;
+      }
+
+      targetScrollRef.current = rawScroll;
     };
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Listen to explore button click event to unlock camera clamp and fly forward
+  useEffect(() => {
+    window.__isExplored = false;
+
+    const handleExplore = () => {
+      isExploredRef.current = true;
+      window.__isExplored = true;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      window.scrollTo({
+        top: 0.75 * max,
+        behavior: 'smooth'
+      });
+    };
+
+    window.addEventListener('explore-click', handleExplore);
+    return () => {
+      window.removeEventListener('explore-click', handleExplore);
+      window.__isExplored = false;
+    };
   }, []);
 
   // ponytail: mousemove on window so HTML overlays can't block the signal
@@ -209,16 +239,23 @@ export default function UnifiedScene() {
 
     // ═══════════════════════════════════════════════════════════════════════
     // SCROLL INTERPOLATION (smooth responsive lerp)
-    // Clamp the target scroll to 0.6245 so the camera target stops exactly
-    // at the end of Zone 2 and responds instantly when scrolling back up.
+    // Clamp the target scroll so the camera stops exactly at the end of Zone 2
+    // (0.6245 normally, or unlocked to 1.0 if the Explore button has been clicked).
     // ═══════════════════════════════════════════════════════════════════════
-    const targetScroll = Math.min(targetScrollRef.current, 0.6245);
+    const maxClamp = isExploredRef.current ? 1.0 : 0.6245;
+    const targetScroll = Math.min(targetScrollRef.current, maxClamp);
     scrollRef.current = THREE.MathUtils.lerp(
       scrollRef.current,
       targetScroll,
       0.025
     );
     const scroll = scrollRef.current;
+
+    // Reset explore status if user scrolls back above the entry threshold
+    if (scroll < 0.60 && isExploredRef.current) {
+      isExploredRef.current = false;
+      window.__isExplored = false;
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // INTRO ANIMATION (first ~5 seconds)
@@ -319,24 +356,9 @@ export default function UnifiedScene() {
     } else {
       // Phase 3: Freeze in front of Portal (scroll 0.75 to 1.00)
       // (Bypassed & commented out for now as cameraScroll is locked at 0.6245, will be re-used when transitioning to Zone 3)
-      /*
-      const startPos = zone2PositionsNew[zone2PositionsNew.length - 1];
-      const startRot = zone2QuaternionsNew[zone2QuaternionsNew.length - 1];
-      targetPos.copy(startPos);
-      targetRot.copy(startRot);
-      */
-
-      // Freeze camera at the exact coordinates of scroll 0.6245 instead
-      const cameraScroll = 0.6245;
-      const t = (cameraScroll - 0.35) / (zone2EndScroll - 0.35);
-      const localT = (t - 0.5) / 0.5;
-      targetPos.copy(zone2PosCurveNew.getPointAt(localT));
-
-      const numSegments = zone2QuaternionsNew.length - 1;
-      const scaledT = localT * numSegments;
-      const index = Math.min(Math.floor(scaledT), numSegments - 1);
-      const segmentT = scaledT - index;
-      targetRot.slerpQuaternions(zone2QuaternionsNew[index], zone2QuaternionsNew[index + 1], ease(segmentT));
+      // Phase 3: Zone 3 (scroll >= 0.75)
+      targetPos.set(400.49, -0.37, -66.67);
+      targetRot.setFromEuler(new THREE.Euler(3.14, 1.41, -3.14));
     }
 
     if (isFreeCam) {
@@ -371,7 +393,7 @@ export default function UnifiedScene() {
         camera.quaternion.slerpQuaternions(introRot, targetRot, introEased);
       } else {
         // Detect transition boundary crossing and force instant teleportation
-        const currentZone = scroll < 0.24 ? 1 : 2;
+        const currentZone = scroll < 0.24 ? 1 : (scroll < 0.75 ? 2 : 3);
         if (currentZone !== lastZoneRef.current) {
           camera.position.set(targetPos.x + mouseX, targetPos.y + mouseY, targetPos.z);
           camera.quaternion.copy(targetRot);
@@ -431,21 +453,29 @@ export default function UnifiedScene() {
     // ═══════════════════════════════════════════════════════════════════════
     const portalIn = 0.18;
     const portalOut = 0.35;
+    const portalIn2 = 0.70;
+    const portalOut2 = 0.85;
+    const portalPeakScroll2 = 0.75;
     let shaderProgress = 0;
+
     if (scroll > portalIn && scroll <= portalPeakScroll) {
       shaderProgress = ease((scroll - portalIn) / (portalPeakScroll - portalIn));
     } else if (scroll > portalPeakScroll && scroll <= portalOut) {
       shaderProgress = 1.0 - ease((scroll - portalPeakScroll) / (portalOut - portalPeakScroll));
+    } else if (scroll > portalIn2 && scroll <= portalPeakScroll2) {
+      shaderProgress = ease((scroll - portalIn2) / (portalPeakScroll2 - portalIn2));
+    } else if (scroll > portalPeakScroll2 && scroll <= portalOut2) {
+      shaderProgress = 1.0 - ease((scroll - portalPeakScroll2) / (portalOut2 - portalPeakScroll2));
     }
 
     window.__portalProgress = isFreeCam ? 0.0 : shaderProgress;
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ZONE 2: Hide until camera starts flying, then reveal
+    // ZONE 2: Hide until camera starts flying, then reveal (hide again in Zone 3)
     // ponytail: prevents second mountain appearing as floating dot in Zone 1
     // ═══════════════════════════════════════════════════════════════════════
     if (zone2Ref.current) {
-      zone2Ref.current.visible = isFreeCam || (scroll > 0.18);
+      zone2Ref.current.visible = isFreeCam || (scroll > 0.18 && scroll < 0.75);
     }
     if (secondMountainRef.current?.uniforms) {
       const zone2Progress = Math.min(Math.max((scroll - 0.35) / (zone2EndScroll - 0.35), 0), 1);
@@ -469,7 +499,7 @@ export default function UnifiedScene() {
       debugRotRef.current.innerText = `Pitch: ${camera.rotation.x.toFixed(2)} | Yaw: ${camera.rotation.y.toFixed(2)} | Roll: ${camera.rotation.z.toFixed(2)}`;
     }
     if (debugZoneRef.current) {
-      debugZoneRef.current.innerText = scroll < 0.24 ? 'ZONE 1 (Hero Island)' : 'ZONE 2 (Space Island)';
+      debugZoneRef.current.innerText = scroll < 0.24 ? 'ZONE 1 (Hero Island)' : (scroll < 0.75 ? 'ZONE 2 (Space Island)' : 'ZONE 3 (New Island)');
     }
     if (debugFreeCamRef.current) {
       debugFreeCamRef.current.innerText = isFreeCam ? 'ACTIVE (WASD/Drag)' : 'INACTIVE (Scroll controlled)';
@@ -522,57 +552,7 @@ export default function UnifiedScene() {
 
       {isFreeCam && <OrbitControls ref={controlsRef} enableDamping={false} />}
 
-      {/* ════════════ COORDINATE DEBUG HUD (Bypassed/Hidden) ════════════ */}
-      {/*
-      <Html fullscreen pointerEvents="none">
-        <div style={{
-          position: 'absolute',
-          top: '90px',
-          right: '40px',
-          fontFamily: 'var(--font-display, "Orbitron", sans-serif)',
-          fontSize: '0.75rem',
-          color: '#00d2ff',
-          background: 'rgba(2, 10, 23, 0.85)',
-          border: '1px solid rgba(0, 210, 255, 0.3)',
-          boxShadow: '0 0 15px rgba(0, 210, 255, 0.15)',
-          padding: '16px',
-          width: '320px',
-          pointerEvents: 'auto',
-          zIndex: 9999,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          clipPath: 'polygon(10px 0%, 100% 0%, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0% 100%, 0% 10px)'
-        }}>
-          <div style={{ fontWeight: 800, borderBottom: '1px solid rgba(0, 210, 255, 0.2)', paddingBottom: '4px', marginBottom: '4px', fontSize: '0.8rem', letterSpacing: '0.1em' }}>
-            CAMERA DEBUG CONSOLE
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#8da4c4' }}>CURRENT ZONE:</span>
-            <span ref={debugZoneRef} style={{ fontWeight: 'bold' }}>-</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#8da4c4' }}>SCROLL PROGRESS:</span>
-            <span ref={debugScrollRef} style={{ fontWeight: 'bold' }}>-</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ color: '#8da4c4' }}>POSITION:</span>
-            <span ref={debugPosRef} style={{ color: '#fff', paddingLeft: '8px', fontFamily: 'monospace' }}>-</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ color: '#8da4c4' }}>ROTATION (EULER):</span>
-            <span ref={debugRotRef} style={{ color: '#fff', paddingLeft: '8px', fontFamily: 'monospace' }}>-</span>
-          </div>
-          <div style={{ display: 'flex', borderTop: '1px dashed rgba(0, 210, 255, 0.15)', paddingTop: '8px', marginTop: '4px', justifyContent: 'space-between' }}>
-            <span style={{ color: '#8da4c4' }}>FREE CAM [C]:</span>
-            <span ref={debugFreeCamRef} style={{ fontWeight: 'bold', color: isFreeCam ? '#39ff14' : '#ff0055' }}>-</span>
-          </div>
-          <div style={{ fontSize: '0.6rem', color: '#8da4c4', fontStyle: 'italic', marginTop: '2px', lineHeight: '1.2' }}>
-            *Press [C] to toggle free fly mode. Use WASD keys to move, Q/E to fly up/down, and drag mouse to rotate.
-          </div>
-        </div>
-      </Html>
-      */}
+      {/* Coordinate Debug HUD is now rendered outside Canvas in App.jsx */}
     </>
   );
 }

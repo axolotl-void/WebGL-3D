@@ -233,10 +233,13 @@ export default function InteractiveCube({ position, index, onClick, scrollRef })
       const SHOW_RATIO = 0.45;
       const HIDE_RATIO = 0.38;
       
+      const isWithinBounds = scroll >= SHOW_RATIO && scroll < 0.75;
+      const shouldHide = scroll < HIDE_RATIO || scroll >= 0.75;
+      
       const isCurrentlyVisible = containerRef.current.classList.contains('visible');
-      if (scroll >= SHOW_RATIO && !isCurrentlyVisible) {
+      if (isWithinBounds && !isCurrentlyVisible) {
         containerRef.current.classList.add('visible');
-      } else if (scroll < HIDE_RATIO && isCurrentlyVisible) {
+      } else if (shouldHide && isCurrentlyVisible) {
         containerRef.current.classList.remove('visible');
       }
     }

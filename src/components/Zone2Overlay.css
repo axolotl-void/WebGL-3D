@@ -121,50 +121,114 @@
 
 /* Explore button */
 .z2-explore-btn {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 14px 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  font-family: var(--font-display);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-main);
-  background: transparent;
-  border: 1px solid rgba(0, 210, 255, 0.35);
-  padding: 12px 24px;
-  cursor: pointer;
+  gap: 10px;
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) scale(1);
+  transform-origin: center;
+  clip-path: polygon(
+    12px 0%, 100% 0%, 100% calc(100% - 12px),
+    calc(100% - 12px) 100%, 0% 100%, 0% 12px
+  );
+  transition: color 0.25s ease, filter 0.25s ease, transform 0.1s ease, opacity 0.85s ease;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 10;
+}
+
+/* Show only when scrolled to the end of Zone 2 */
+.z2-explore-btn.btn-visible {
+  opacity: 1;
   pointer-events: auto;
-  position: relative;
-  transition: color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* Outer border gradient matching Zone 1 primary button */
+.z2-explore-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--accent-cyan), rgba(0, 210, 255, 0.35));
+  clip-path: polygon(
+    12px 0%, 100% 0%, 100% calc(100% - 12px),
+    calc(100% - 12px) 100%, 0% 100%, 0% 12px
+  );
+  z-index: -2;
+  transition: background 0.25s ease;
+}
+
+/* Inner dark glassmorphic fill */
+.z2-explore-btn::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: rgba(2, 10, 23, 0.85);
+  clip-path: polygon(
+    11px 0%, 100% 0%, 100% calc(100% - 11px),
+    calc(100% - 11px) 100%, 0% 100%, 0% 11px
+  );
+  z-index: -1;
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Hover glowing effects */
 .z2-explore-btn:hover {
-  color: #fff;
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 15px rgba(0, 210, 255, 0.25), inset 0 0 10px rgba(0, 210, 255, 0.1);
-  text-shadow: 0 0 8px rgba(0, 210, 255, 0.5);
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
+  filter: drop-shadow(0 0 12px rgba(0, 210, 255, 0.5));
 }
 
-.z2-explore-btn:active {
-  transform: scale(0.96);
+.z2-explore-btn:hover::before {
+  background: linear-gradient(135deg, #ffffff, var(--accent-cyan));
+}
+
+.z2-explore-btn:hover::after {
   background: rgba(0, 210, 255, 0.15);
+  box-shadow: inset 0 0 12px rgba(0, 210, 255, 0.35);
+}
+
+/* Press state with tactile scale down and solid flash */
+.z2-explore-btn:active {
+  transform: translateX(-50%) scale(0.96);
+  color: #020a19;
+  text-shadow: none;
+  filter: drop-shadow(0 0 16px rgba(0, 210, 255, 0.75));
+}
+
+.z2-explore-btn:active::after {
+  background: var(--accent-cyan);
+  box-shadow: none;
+}
+
+/* Cooldown/Disabled state - visually muted and no click response */
+.z2-explore-btn:disabled,
+.z2-explore-btn.cooldown {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+  filter: saturate(0.5);
 }
 
 .z2-explore-arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid rgba(0, 210, 255, 0.3);
-  font-size: 0.9rem;
-  transition: transform 0.3s ease, border-color 0.3s ease;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: transform 0.3s ease;
 }
 
 .z2-explore-btn:hover .z2-explore-arrow {
   transform: translateX(3px);
-  border-color: var(--accent-cyan);
 }
 
 /* Vertical progress track on left edge of panel */
