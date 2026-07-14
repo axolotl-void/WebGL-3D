@@ -169,8 +169,8 @@ const TechCube = forwardRef(function TechCube({ scrollRef }, ref) {
 
     const scroll = scrollRef ? scrollRef.current : 0;
 
-    // Target based on hover state (1.0 for fully exploded), but ONLY if scroll is at the top (< 0.02)
-    const target = (isHoveredRef.current && scroll < 0.02) ? 1.0 : 0.0;
+    // Target based on hover state, but ONLY if scroll is at the very top (< 0.01) so it snaps back immediately on scroll
+    const target = (isHoveredRef.current && scroll < 0.01) ? 1.0 : 0.0;
 
     // Smooth lerp to target - lowered factor (0.025) for a slower, smoother transition
     explodeTRef.current += (target - explodeTRef.current) * 0.025;

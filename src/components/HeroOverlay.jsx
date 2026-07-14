@@ -116,6 +116,8 @@ export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
     }
   }, [isSoundOn]);
 
+  const [activeSection, setActiveSection] = useState('home');
+
   // Intro and scroll animations
   useEffect(() => {
     const root = rootRef.current;
@@ -222,6 +224,22 @@ export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
 
     const handleScroll = () => {
       updateHeroPositionAndOpacity(lastMouseEvent);
+
+      const scrollY = window.scrollY;
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollRatio = maxScroll > 0 ? scrollY / maxScroll : 0;
+
+      // ponytail: map zones dynamically to section highlights
+      let currentSection = 'home';
+      if (scrollRatio >= 0.95) {
+        currentSection = 'contact';
+      } else if (scrollRatio >= 0.75) {
+        currentSection = 'projects';
+      } else if (scrollRatio >= 0.24) {
+        currentSection = 'about';
+      }
+
+      setActiveSection(currentSection);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -256,6 +274,29 @@ export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
     });
   };
 
+  const handleNavClick = (section, e) => {
+    e.preventDefault();
+    playClickSfx();
+
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    let targetRatio = 0;
+
+    if (section === 'about') {
+      targetRatio = 0.5; // Scroll into the middle of Zone 2
+    } else if (section === 'projects') {
+      window.dispatchEvent(new CustomEvent('explore-click')); // unlock scrolling to Zone 3
+      targetRatio = 0.85; // Scroll into the middle of Zone 3
+    } else if (section === 'contact') {
+      window.dispatchEvent(new CustomEvent('explore-click')); // unlock scrolling to Zone 3
+      targetRatio = 1.0;  // Scroll to the end (Zone 3 contact area)
+    }
+
+    window.scrollTo({
+      top: targetRatio * maxScroll,
+      behavior: 'smooth'
+    });
+  };
+
   return (
     <div className="hero-overlay" ref={rootRef}>
       {/* ═══════ TOP NAVBAR ═══════ */}
@@ -265,11 +306,34 @@ export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
           <span className={`ho-logo-cursor ${showCursor ? '' : 'off'}`}>|</span>
         </a>
         <div className="ho-nav-links">
-          <a href="#home" className="ho-nav-link active" onClick={playClickSfx}>HOME</a>
-          <a href="#about" className="ho-nav-link" onClick={playClickSfx}>ABOUT</a>
-          <a href="#projects" className="ho-nav-link" onClick={playClickSfx}>PROJECTS</a>
-          <a href="#lab" className="ho-nav-link" onClick={playClickSfx}>LAB</a>
-          <a href="#contact" className="ho-nav-link" onClick={playClickSfx}>CONTACT</a>
+          <a
+            href="#home"
+            className={`ho-nav-link ${activeSection === 'home' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick('home', e)}
+          >
+            HOME
+          </a>
+          <a
+            href="#about"
+            className={`ho-nav-link ${activeSection === 'about' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick('about', e)}
+          >
+            ABOUT
+          </a>
+          <a
+            href="#projects"
+            className={`ho-nav-link ${activeSection === 'projects' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick('projects', e)}
+          >
+            PROJECTS
+          </a>
+          <a
+            href="#contact"
+            className={`ho-nav-link ${activeSection === 'contact' ? 'active' : ''}`}
+            onClick={(e) => handleNavClick('contact', e)}
+          >
+            CONTACT
+          </a>
         </div>
       </nav>
 

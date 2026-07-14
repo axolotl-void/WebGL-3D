@@ -37,7 +37,7 @@
     calc(100% - 28px) 100%, 0% 100%, 0% 28px
   );
   overflow: hidden;
-  pointer-events: auto;
+  pointer-events: none;
   
   /* Initial State for Animation */
   opacity: 0;
@@ -53,6 +53,7 @@
   opacity: 1;
   transform: translateX(0) scale(1);
   filter: blur(0);
+  pointer-events: auto;
 }
 
 /* Ensure contents sit above background overlays */
