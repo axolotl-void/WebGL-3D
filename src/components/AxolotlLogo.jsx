@@ -104,22 +104,11 @@ export default function AxolotlLogo({ scrollRef }) {
   const cylinderRef = useRef();
   const { raycaster, camera, pointer } = useThree();
 
-  // Sample points from the GLTF mesh surfaces
-  const particlePositions = useMemo(() => samplePointsFromScene(scene, PARTICLE_COUNT), [scene]);
-
-  // Store original positions (copy) and velocities
+  // ponytail: lazy init — sampling blocks main thread, so defer until Zone 3 entry
+  const initedRef = useRef(false);
   const origPositions = useRef(null);
   const velocities = useRef(null);
-  if (!origPositions.current) {
-    origPositions.current = new Float32Array(particlePositions);
-    velocities.current = new Float32Array(particlePositions.length);
-  }
-
-  const pointsGeo = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-    return geo;
-  }, [particlePositions]);
+  const pointsGeoRef = useRef(new THREE.BufferGeometry());
 
   // ponytail: pre-allocate temps outside frame loop to avoid GC
   const _plane = useMemo(() => new THREE.Plane(), []);
@@ -144,6 +133,15 @@ export default function AxolotlLogo({ scrollRef }) {
     }
     groupRef.current.visible = true;
 
+    // Lazy init: sample particles only on first Zone 3 entry
+    if (!initedRef.current) {
+      initedRef.current = true;
+      const positions = samplePointsFromScene(scene, PARTICLE_COUNT);
+      origPositions.current = new Float32Array(positions);
+      velocities.current = new Float32Array(positions.length);
+      pointsGeoRef.current.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    }
+
     const t = state.clock.getElapsedTime();
 
     // 1. Smooth hover floating
@@ -161,7 +159,7 @@ export default function AxolotlLogo({ scrollRef }) {
     }
 
     // 4. Mouse repulsion physics
-    if (!logoRef.current || !pointsGeo.attributes.position) return;
+    if (!logoRef.current || !pointsGeoRef.current.attributes.position) return;
 
     // Raycast onto a plane at logo center, facing camera
     raycaster.setFromCamera(pointer, camera);
@@ -170,7 +168,7 @@ export default function AxolotlLogo({ scrollRef }) {
     _plane.setFromNormalAndCoplanarPoint(_camDir.negate(), _logoWorld);
     const hit = raycaster.ray.intersectPlane(_plane, _mouseWorld);
 
-    const pos = pointsGeo.attributes.position.array;
+    const pos = pointsGeoRef.current.attributes.position.array;
     const orig = origPositions.current;
     const vel = velocities.current;
 
@@ -230,14 +228,14 @@ export default function AxolotlLogo({ scrollRef }) {
       if (pos[iy] < -CYL_HALF_H) { pos[iy] = -CYL_HALF_H; vel[iy] *= -0.3; }
     }
 
-    pointsGeo.attributes.position.needsUpdate = true;
+    pointsGeoRef.current.attributes.position.needsUpdate = true;
   });
 
   return (
-    <group ref={groupRef} position={[377.73, -0.5, -50.83]}>
+    <group ref={groupRef} position={[381.51, -0.5, -49.41]}>
       {/* Particle Logo */}
       <group ref={logoRef} scale={9.0}>
-        <points geometry={pointsGeo}>
+        <points geometry={pointsGeoRef.current}>
           <pointsMaterial
             color="#00d2ff"
             size={0.045}

@@ -9,10 +9,11 @@ import IdentityPanel from './components/IdentityPanel';
 import EducationPanel from './components/EducationPanel';
 import SkillsPanel from './components/SkillsPanel';
 import AchievementsPanel from './components/AchievementsPanel';
+import Zone3Overlay from './components/Zone3Overlay';
 import './App.css';
 
 function App() {
-  const [showDebugConsole, setShowDebugConsole] = useState(true);
+  const [showDebugConsole, setShowDebugConsole] = useState(false);
   // Debug HUD Refs declared outside Canvas to avoid 3D projection shaking and rendering drops
   const debugScrollRef = useRef(null);
   const debugPosRef = useRef(null);
@@ -55,6 +56,7 @@ function App() {
         onToggleDebug={() => setShowDebugConsole(prev => !prev)}
       />
       <Zone2Overlay />
+      <Zone3Overlay />
       <IdentityPanel />
       <EducationPanel />
       <SkillsPanel />
