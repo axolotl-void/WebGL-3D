@@ -6,17 +6,48 @@ import { samplePointsFromScene } from '../lib/samplePoints';
 
 const PARTICLE_COUNT = 20000;
 
-export default function AxolotlLogo({ scrollRef }) {
-  const { scene } = useGLTF('/models/3d_model/3d-logo-axolotl.glb');
+// ponytail: both logos share one container; only the particle shape + color swap.
+const LOGOS = [
+  { url: '/models/3d_model/3d-logo-axolotl.glb', color: '#00d2ff' },
+  { url: '/models/3d_model/3d-logi-wa.glb', color: '#25D366' },
+];
+
+const LOGO_SCALE = 9.0;
+const CYL_RADIUS = 7.0 / LOGO_SCALE;   // ~0.778
+const CYL_HALF_H = 6.0 / LOGO_SCALE;   // ~0.667
+
+// Formation ("shatter → merge") spring is stiffer than the idle mouse spring,
+// so the logo re-assembles smoothly but not too fast.
+const FORM_SPRING = 0.03;
+const FORM_DAMP = 0.94;
+const MOUSE_SPRING = 0.004;
+const MOUSE_DAMP = 0.98;
+// Scatter phase: particles drift outward from the old logo via per-particle outward velocity,
+// no spring force. After SCATTER_DURATION seconds, the form phase kicks in.
+const SCATTER_DURATION = 0.9;     // seconds — slow, gradual spread
+const SCATTER_DAMP = 0.92;         // light damping during scatter
+const SCATTER_SPEED_MIN = 0.012;
+const SCATTER_SPEED_MAX = 0.034;
+const CONVERGE_EPS = 0.0004;
+
+export default function ParticleLogo({ scrollRef }) {
+  const axolotlScene = useGLTF('/models/3d_model/3d-logo-axolotl.glb').scene;
+  const waScene = useGLTF('/models/3d_model/3d-logi-wa.glb').scene;
+
   const groupRef = useRef();
   const logoRef = useRef();
   const cylinderRef = useRef();
+  const materialRef = useRef();
   const { raycaster, camera, pointer } = useThree();
 
-  // ponytail: lazy init — sampling blocks main thread, so defer until Zone 3 entry
   const initedRef = useRef(false);
-  const origPositions = useRef(null);
-  const velocities = useRef(null);
+  const positionsByLogo = useRef([null, null]);
+  const origPositionsRef = useRef(null);
+  const velocitiesRef = useRef(null);
+  const lastLogoRef = useRef(0);
+  const formingRef = useRef(false);
+  const scatterTimerRef = useRef(0);
+  const lastTimeRef = useRef(0);
   const pointsGeoRef = useRef(new THREE.BufferGeometry());
 
   // ponytail: pre-allocate temps outside frame loop to avoid GC
@@ -27,32 +58,46 @@ export default function AxolotlLogo({ scrollRef }) {
   const _invMat = useMemo(() => new THREE.Matrix4(), []);
   const _mouseLocal = useMemo(() => new THREE.Vector3(), []);
 
-  // Cylinder bounds in logo local space (logo scale = 9.0)
-  const LOGO_SCALE = 9.0;
-  const CYL_RADIUS = 7.0 / LOGO_SCALE;   // ~0.778
-  const CYL_HALF_H = 6.0 / LOGO_SCALE;   // ~0.667
-
   useFrame((state) => {
     if (!groupRef.current) return;
 
+    const t = state.clock.getElapsedTime();
+    const dt = Math.min(0.05, t - lastTimeRef.current);
+    lastTimeRef.current = t;
+
     const scroll = scrollRef ? scrollRef.current : 0;
-    const isActive = window.__activeLogo === undefined || window.__activeLogo === 0;
-    if (scroll < 0.75 || !isActive) {
+    if (scroll < 0.75) {
       groupRef.current.visible = false;
       return;
     }
     groupRef.current.visible = true;
 
-    // Lazy init: sample particles only on first Zone 3 entry
+    // Lazy init at Zone 3 entry: sample both logos once.
     if (!initedRef.current) {
       initedRef.current = true;
-      const positions = samplePointsFromScene(scene, PARTICLE_COUNT);
-      origPositions.current = new Float32Array(positions);
-      velocities.current = new Float32Array(positions.length);
-      pointsGeoRef.current.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const a = samplePointsFromScene(axolotlScene, PARTICLE_COUNT);
+      const w = samplePointsFromScene(waScene, PARTICLE_COUNT);
+      positionsByLogo.current[0] = new Float32Array(a);
+      positionsByLogo.current[1] = new Float32Array(w);
+      velocitiesRef.current = new Float32Array(PARTICLE_COUNT * 3);
+      origPositionsRef.current = positionsByLogo.current[0];
+      pointsGeoRef.current.setAttribute(
+        'position',
+        new THREE.BufferAttribute(new Float32Array(a), 3)
+      );
     }
 
-    const t = state.clock.getElapsedTime();
+    const activeLogo = window.__activeLogo ?? 0;
+
+    // Detect switch → scatter old shape outward, swap target shape, change color.
+    if (activeLogo !== lastLogoRef.current) {
+      lastLogoRef.current = activeLogo;
+      origPositionsRef.current = positionsByLogo.current[activeLogo];
+      triggerScatter();
+      if (materialRef.current) {
+        materialRef.current.color.set(LOGOS[activeLogo].color);
+      }
+    }
 
     // 1. Smooth hover floating
     groupRef.current.position.y = -0.5 + Math.sin(t * 0.8) * 0.08;
@@ -68,8 +113,12 @@ export default function AxolotlLogo({ scrollRef }) {
       cylinderRef.current.rotation.y = -t * 0.05;
     }
 
-    // 4. Mouse repulsion physics
+    // 4. Physics
     if (!logoRef.current || !pointsGeoRef.current.attributes.position) return;
+
+    const pos = pointsGeoRef.current.attributes.position.array;
+    const orig = origPositionsRef.current;
+    const vel = velocitiesRef.current;
 
     // Raycast onto a plane at logo center, facing camera
     raycaster.setFromCamera(pointer, camera);
@@ -78,26 +127,36 @@ export default function AxolotlLogo({ scrollRef }) {
     _plane.setFromNormalAndCoplanarPoint(_camDir.negate(), _logoWorld);
     const hit = raycaster.ray.intersectPlane(_plane, _mouseWorld);
 
-    const pos = pointsGeoRef.current.attributes.position.array;
-    const orig = origPositions.current;
-    const vel = velocities.current;
-
-    const repRadius = 0.18;
-    const repStrength = 0.2;
-    const kSpring = 0.004;
-    const damping = 0.98;
-
     if (hit) {
-      // Transform mouse world pos into logo local space
       _invMat.copy(logoRef.current.matrixWorld).invert();
       _mouseLocal.copy(_mouseWorld).applyMatrix4(_invMat);
     }
 
+    const forming = formingRef.current;
+    const inScatter = scatterTimerRef.current > 0;
+    let kSpring, damping, repRadius;
+    if (inScatter) {
+      kSpring = 0;
+      damping = SCATTER_DAMP;
+      repRadius = 0;
+    } else if (forming) {
+      kSpring = FORM_SPRING;
+      damping = FORM_DAMP;
+      repRadius = 0;
+    } else {
+      kSpring = MOUSE_SPRING;
+      damping = MOUSE_DAMP;
+      repRadius = 0.18;
+    }
+    const repStrength = 0.2;
+
+    let sumSq = 0;
+
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const ix = i * 3, iy = ix + 1, iz = ix + 2;
 
-      // Mouse repulsion
-      if (hit) {
+      // Mouse repulsion (disabled during scatter / formation)
+      if (hit && !forming && !inScatter) {
         const dx = pos[ix] - _mouseLocal.x;
         const dy = pos[iy] - _mouseLocal.y;
         const dz = pos[iz] - _mouseLocal.z;
@@ -111,7 +170,7 @@ export default function AxolotlLogo({ scrollRef }) {
         }
       }
 
-      // Spring return to original position
+      // Spring return to target position (0 during scatter)
       vel[ix] += (orig[ix] - pos[ix]) * kSpring;
       vel[iy] += (orig[iy] - pos[iy]) * kSpring;
       vel[iz] += (orig[iz] - pos[iz]) * kSpring;
@@ -136,10 +195,55 @@ export default function AxolotlLogo({ scrollRef }) {
       }
       if (pos[iy] > CYL_HALF_H) { pos[iy] = CYL_HALF_H; vel[iy] *= -0.3; }
       if (pos[iy] < -CYL_HALF_H) { pos[iy] = -CYL_HALF_H; vel[iy] *= -0.3; }
+
+      if (forming && !inScatter) {
+        const dx = orig[ix] - pos[ix];
+        const dy = orig[iy] - pos[iy];
+        const dz = orig[iz] - pos[iz];
+        sumSq += dx * dx + dy * dy + dz * dz;
+      }
+    }
+
+    // Advance scatter phase, then start forming
+    if (inScatter) {
+      scatterTimerRef.current = Math.max(0, scatterTimerRef.current - dt);
+      if (scatterTimerRef.current === 0) {
+        formingRef.current = true;
+      }
+    }
+
+    // End formation once particles have settled onto the target shape
+    if (forming && !inScatter && sumSq / PARTICLE_COUNT < CONVERGE_EPS) {
+      formingRef.current = false;
     }
 
     pointsGeoRef.current.attributes.position.needsUpdate = true;
   });
+
+  // Trigger a slow scatter: particles stay at the old logo shape but get
+  // outward velocities in random directions with random magnitudes, so they
+  // drift apart over ~0.9s (chaotic / messy). The form phase then pulls them
+  // into the new logo shape.
+  function triggerScatter() {
+    scatterTimerRef.current = SCATTER_DURATION;
+    formingRef.current = false;
+    const vel = velocitiesRef.current;
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const ix = i * 3, iy = ix + 1, iz = ix + 2;
+      // uniform random unit vector on a sphere
+      const u = Math.random() * 2 - 1;
+      const v = Math.random() * Math.PI * 2;
+      const s = Math.sqrt(1 - u * u);
+      const dx = s * Math.cos(v);
+      const dy = u;
+      const dz = s * Math.sin(v);
+      const speed = SCATTER_SPEED_MIN + Math.random() * (SCATTER_SPEED_MAX - SCATTER_SPEED_MIN);
+      vel[ix] = dx * speed;
+      vel[iy] = dy * speed;
+      vel[iz] = dz * speed;
+    }
+    pointsGeoRef.current.attributes.position.needsUpdate = true;
+  }
 
   return (
     <group ref={groupRef} position={[381.51, -0.5, -49.41]}>
@@ -147,6 +251,7 @@ export default function AxolotlLogo({ scrollRef }) {
       <group ref={logoRef} scale={9.0}>
         <points geometry={pointsGeoRef.current}>
           <pointsMaterial
+            ref={materialRef}
             color="#00d2ff"
             size={0.045}
             transparent
@@ -158,7 +263,7 @@ export default function AxolotlLogo({ scrollRef }) {
         </points>
       </group>
 
-      {/* Holographic Container Cylinder (wireframe) */}
+      {/* Holographic Container Cylinder (wireframe) — shared, never changes */}
       <mesh ref={cylinderRef}>
         <cylinderGeometry args={[7.0, 7.0, 12.0, 32, 10, true]} />
         <meshBasicMaterial
@@ -211,3 +316,4 @@ export default function AxolotlLogo({ scrollRef }) {
 }
 
 useGLTF.preload('/models/3d_model/3d-logo-axolotl.glb');
+useGLTF.preload('/models/3d_model/3d-logi-wa.glb');

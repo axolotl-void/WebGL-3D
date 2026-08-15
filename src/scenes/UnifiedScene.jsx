@@ -7,7 +7,7 @@ import SnowyMountain from '../components/SnowyMountain';
 import SecondMountain from '../components/SecondMountain';
 import InteractiveCube from '../components/InteractiveCube';
 import Portal from '../components/Portal';
-import AxolotlLogo from '../components/AxolotlLogo';
+import ParticleLogo from '../components/ParticleLogo';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ambient Sparkling Particles (Floating Dust Field)
@@ -616,7 +616,8 @@ export default function UnifiedScene({
       {/* ════════════ ZONE 3 OBJECTS ════════════ */}
       {/* ponytail: rising blue particles at the mountain origin, visible from Zone 3 camera */}
       <RisingParticles count={350} scrollRef={scrollRef} />
-      <AxolotlLogo scrollRef={scrollRef} />
+      {/* Unified particle logo: swaps axolotl ⇄ WA in one shared container */}
+      <ParticleLogo scrollRef={scrollRef} />
 
       {/* ════════════ ZONE 2 OBJECTS ════════════ */}
       <group ref={zone2Ref} position={[0, 0, ZONE2_Z]} visible={false}>

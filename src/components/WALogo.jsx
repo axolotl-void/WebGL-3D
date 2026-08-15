@@ -4,10 +4,10 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { samplePointsFromScene } from '../lib/samplePoints';
 
-const PARTICLE_COUNT = 20000;
+const PARTICLE_COUNT = 12000;
 
-export default function AxolotlLogo({ scrollRef }) {
-  const { scene } = useGLTF('/models/3d_model/3d-logo-axolotl.glb');
+export default function WALogo({ scrollRef }) {
+  const { scene } = useGLTF('/models/3d_model/3d-logi-wa.glb');
   const groupRef = useRef();
   const logoRef = useRef();
   const cylinderRef = useRef();
@@ -27,23 +27,22 @@ export default function AxolotlLogo({ scrollRef }) {
   const _invMat = useMemo(() => new THREE.Matrix4(), []);
   const _mouseLocal = useMemo(() => new THREE.Vector3(), []);
 
-  // Cylinder bounds in logo local space (logo scale = 9.0)
-  const LOGO_SCALE = 9.0;
-  const CYL_RADIUS = 7.0 / LOGO_SCALE;   // ~0.778
-  const CYL_HALF_H = 6.0 / LOGO_SCALE;   // ~0.667
+  // Cylinder bounds in logo local space (logo scale = 7.0)
+  const LOGO_SCALE = 7.0;
+  const CYL_RADIUS = 5.5 / LOGO_SCALE;   // ~0.786
+  const CYL_HALF_H = 5.0 / LOGO_SCALE;   // ~0.714
 
   useFrame((state) => {
     if (!groupRef.current) return;
 
     const scroll = scrollRef ? scrollRef.current : 0;
-    const isActive = window.__activeLogo === undefined || window.__activeLogo === 0;
-    if (scroll < 0.75 || !isActive) {
+    if (scroll < 0.75) {
       groupRef.current.visible = false;
       return;
     }
-    groupRef.current.visible = true;
 
-    // Lazy init: sample particles only on first Zone 3 entry
+    // Lazy init at Zone 3 entry (same time as axolotl), NOT on first activation —
+    // so toggling between logos is instant and never causes a sampling freeze.
     if (!initedRef.current) {
       initedRef.current = true;
       const positions = samplePointsFromScene(scene, PARTICLE_COUNT);
@@ -52,14 +51,21 @@ export default function AxolotlLogo({ scrollRef }) {
       pointsGeoRef.current.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     }
 
+    const isActive = window.__activeLogo === 1;
+    if (!isActive) {
+      groupRef.current.visible = false;
+      return;
+    }
+    groupRef.current.visible = true;
+
     const t = state.clock.getElapsedTime();
 
     // 1. Smooth hover floating
     groupRef.current.position.y = -0.5 + Math.sin(t * 0.8) * 0.08;
 
-    // 2. Rotate the particle logo
+    // 2. Rotate the particle logo (counter to axolotl)
     if (logoRef.current) {
-      logoRef.current.rotation.y = t * 0.4;
+      logoRef.current.rotation.y = -t * 0.35;
       logoRef.current.rotation.x = Math.sin(t * 0.2) * 0.05;
     }
 
@@ -144,11 +150,11 @@ export default function AxolotlLogo({ scrollRef }) {
   return (
     <group ref={groupRef} position={[381.51, -0.5, -49.41]}>
       {/* Particle Logo */}
-      <group ref={logoRef} scale={9.0}>
+      <group ref={logoRef} scale={7.0}>
         <points geometry={pointsGeoRef.current}>
           <pointsMaterial
-            color="#00d2ff"
-            size={0.045}
+            color="#25D366"
+            size={0.05}
             transparent
             opacity={0.9}
             sizeAttenuation
@@ -160,7 +166,7 @@ export default function AxolotlLogo({ scrollRef }) {
 
       {/* Holographic Container Cylinder (wireframe) */}
       <mesh ref={cylinderRef}>
-        <cylinderGeometry args={[7.0, 7.0, 12.0, 32, 10, true]} />
+        <cylinderGeometry args={[5.5, 5.5, 10.0, 32, 10, true]} />
         <meshBasicMaterial
           color="#ffcc00"
           wireframe
@@ -172,8 +178,8 @@ export default function AxolotlLogo({ scrollRef }) {
       </mesh>
 
       {/* Top framing ring */}
-      <mesh position={[0, 6.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[6.9, 7.1, 64]} />
+      <mesh position={[0, 5.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[5.4, 5.6, 64]} />
         <meshBasicMaterial
           color="#ffcc00"
           transparent
@@ -184,8 +190,8 @@ export default function AxolotlLogo({ scrollRef }) {
       </mesh>
 
       {/* Bottom framing ring */}
-      <mesh position={[0, -6.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[6.9, 7.1, 64]} />
+      <mesh position={[0, -5.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[5.4, 5.6, 64]} />
         <meshBasicMaterial
           color="#ffcc00"
           transparent
@@ -196,8 +202,8 @@ export default function AxolotlLogo({ scrollRef }) {
       </mesh>
 
       {/* Bottom cap disc */}
-      <mesh position={[0, -6.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[7.0, 64]} />
+      <mesh position={[0, -5.0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[5.5, 64]} />
         <meshBasicMaterial
           color="#ffcc00"
           transparent
@@ -210,4 +216,4 @@ export default function AxolotlLogo({ scrollRef }) {
   );
 }
 
-useGLTF.preload('/models/3d_model/3d-logo-axolotl.glb');
+useGLTF.preload('/models/3d_model/3d-logi-wa.glb');
