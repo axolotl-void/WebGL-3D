@@ -76,7 +76,7 @@ export default function Zone3Overlay() {
 
   // ponytail: bridge logo visibility between DOM overlay and WebGL scene
   const switchLogo = (dir) => {
-    const next = (activeLogo + dir + 2) % 2;
+    const next = (activeLogo + dir + LOGO_LABELS.length) % LOGO_LABELS.length;
     setActiveLogo(next);
     window.__activeLogo = next;
     playClickSfx();
@@ -131,7 +131,7 @@ export default function Zone3Overlay() {
 
   const activeProject = PROJECTS_DATA[activeIdx];
 
-  const LOGO_LABELS = ['AXOLOTL', 'WA'];
+  const LOGO_LABELS = ['AXOLOTL', 'WA', 'INSTAGRAM', 'GMAIL'];
 
   return (
     <>

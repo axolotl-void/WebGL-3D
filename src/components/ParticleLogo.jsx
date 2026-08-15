@@ -6,33 +6,43 @@ import { samplePointsFromScene } from '../lib/samplePoints';
 
 const PARTICLE_COUNT = 20000;
 
-// ponytail: both logos share one container; only the particle shape + color swap.
+// ponytail: all logos share one container; only the particle shape + color swap.
 const LOGOS = [
   { url: '/models/3d_model/3d-logo-axolotl.glb', color: '#00d2ff' },
   { url: '/models/3d_model/3d-logi-wa.glb', color: '#25D366' },
+  { url: '/models/3d_model/3d-logo-instagram.glb', color: '#E4405F' },
+  { url: '/models/3d_model/3d-logo-gmail.glb', color: '#D44638' },
 ];
 
 const LOGO_SCALE = 9.0;
 const CYL_RADIUS = 7.0 / LOGO_SCALE;   // ~0.778
 const CYL_HALF_H = 6.0 / LOGO_SCALE;   // ~0.667
 
-// Formation ("shatter → merge") spring is stiffer than the idle mouse spring,
-// so the logo re-assembles smoothly but not too fast.
-const FORM_SPRING = 0.03;
-const FORM_DAMP = 0.94;
+// Formation phase: simple exponential lerp toward the target shape
+// (instead of a spring). Lerp has no inertia, so particles glide smoothly
+// back into the new logo with no oscillation / pulsing.
+const FORM_LERP = 0.045;            // ~45 ms half-life at 60fps
 const MOUSE_SPRING = 0.004;
 const MOUSE_DAMP = 0.98;
-// Scatter phase: particles drift outward from the old logo via per-particle outward velocity,
-// no spring force. After SCATTER_DURATION seconds, the form phase kicks in.
+// Scatter phase: particles get a vortex-style velocity — radial outward (from
+// each particle's current XZ position) plus a tangential swirl around the Y axis.
+// All particles rotate the same direction so the whole cloud looks like a galaxy
+// explosion. After SCATTER_DURATION seconds, the form phase kicks in.
 const SCATTER_DURATION = 0.9;     // seconds — slow, gradual spread
 const SCATTER_DAMP = 0.92;         // light damping during scatter
 const SCATTER_SPEED_MIN = 0.012;
 const SCATTER_SPEED_MAX = 0.034;
+const SCATTER_SWIRL_RATIO = 1.2;  // tangential speed / radial speed (decisive swirl)
+const SCATTER_Y_JITTER = 0.012;   // small vertical perturbation for chaos
+const SCATTER_RAMP_IN = 0.18;     // velocity ramps 0 → target over this many seconds (no abrupt kick)
+const SCATTER_TARGET_BOOST = 1.2; // compensate ramp-up so the dispersal distance stays similar
 const CONVERGE_EPS = 0.0004;
 
 export default function ParticleLogo({ scrollRef }) {
   const axolotlScene = useGLTF('/models/3d_model/3d-logo-axolotl.glb').scene;
   const waScene = useGLTF('/models/3d_model/3d-logi-wa.glb').scene;
+  const igScene = useGLTF('/models/3d_model/3d-logo-instagram.glb').scene;
+  const gmailScene = useGLTF('/models/3d_model/3d-logo-gmail.glb').scene;
 
   const groupRef = useRef();
   const logoRef = useRef();
@@ -41,12 +51,13 @@ export default function ParticleLogo({ scrollRef }) {
   const { raycaster, camera, pointer } = useThree();
 
   const initedRef = useRef(false);
-  const positionsByLogo = useRef([null, null]);
+  const positionsByLogo = useRef([null, null, null, null]);
   const origPositionsRef = useRef(null);
   const velocitiesRef = useRef(null);
   const lastLogoRef = useRef(0);
   const formingRef = useRef(false);
   const scatterTimerRef = useRef(0);
+  const scatterTargetRef = useRef(new Float32Array(PARTICLE_COUNT * 3));
   const lastTimeRef = useRef(0);
   const pointsGeoRef = useRef(new THREE.BufferGeometry());
 
@@ -72,13 +83,17 @@ export default function ParticleLogo({ scrollRef }) {
     }
     groupRef.current.visible = true;
 
-    // Lazy init at Zone 3 entry: sample both logos once.
+    // Lazy init at Zone 3 entry: sample all logos once.
     if (!initedRef.current) {
       initedRef.current = true;
       const a = samplePointsFromScene(axolotlScene, PARTICLE_COUNT);
       const w = samplePointsFromScene(waScene, PARTICLE_COUNT);
+      const i = samplePointsFromScene(igScene, PARTICLE_COUNT);
+      const g = samplePointsFromScene(gmailScene, PARTICLE_COUNT);
       positionsByLogo.current[0] = new Float32Array(a);
       positionsByLogo.current[1] = new Float32Array(w);
+      positionsByLogo.current[2] = new Float32Array(i);
+      positionsByLogo.current[3] = new Float32Array(g);
       velocitiesRef.current = new Float32Array(PARTICLE_COUNT * 3);
       origPositionsRef.current = positionsByLogo.current[0];
       pointsGeoRef.current.setAttribute(
@@ -134,14 +149,23 @@ export default function ParticleLogo({ scrollRef }) {
 
     const forming = formingRef.current;
     const inScatter = scatterTimerRef.current > 0;
+
+    // scatterRamp: 0 → 1 over SCATTER_RAMP_IN seconds at the START of scatter phase.
+    // Particles start at rest and accelerate into the vortex, no abrupt kick.
+    let scatterRamp = 0;
+    if (inScatter) {
+      const elapsed = SCATTER_DURATION - scatterTimerRef.current;
+      scatterRamp = Math.min(1, elapsed / SCATTER_RAMP_IN);
+    }
+
     let kSpring, damping, repRadius;
     if (inScatter) {
       kSpring = 0;
       damping = SCATTER_DAMP;
       repRadius = 0;
     } else if (forming) {
-      kSpring = FORM_SPRING;
-      damping = FORM_DAMP;
+      kSpring = 0;
+      damping = 1;
       repRadius = 0;
     } else {
       kSpring = MOUSE_SPRING;
@@ -150,6 +174,7 @@ export default function ParticleLogo({ scrollRef }) {
     }
     const repStrength = 0.2;
 
+    const scatterTarget = scatterTargetRef.current;
     let sumSq = 0;
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -170,20 +195,39 @@ export default function ParticleLogo({ scrollRef }) {
         }
       }
 
-      // Spring return to target position (0 during scatter)
-      vel[ix] += (orig[ix] - pos[ix]) * kSpring;
-      vel[iy] += (orig[iy] - pos[iy]) * kSpring;
-      vel[iz] += (orig[iz] - pos[iz]) * kSpring;
+      if (inScatter) {
+        // Override velocity with target * ramp (smooth acceleration, no kick)
+        vel[ix] = scatterTarget[ix] * scatterRamp;
+        vel[iy] = scatterTarget[iy] * scatterRamp;
+        vel[iz] = scatterTarget[iz] * scatterRamp;
+      } else if (forming) {
+        // Pure lerp toward target — no spring, no inertia, no oscillation.
+        pos[ix] += (orig[ix] - pos[ix]) * FORM_LERP;
+        pos[iy] += (orig[iy] - pos[iy]) * FORM_LERP;
+        pos[iz] += (orig[iz] - pos[iz]) * FORM_LERP;
+        vel[ix] = 0;
+        vel[iy] = 0;
+        vel[iz] = 0;
+      } else {
+        // Idle: spring + mouse repulsion
+        vel[ix] += (orig[ix] - pos[ix]) * kSpring;
+        vel[iy] += (orig[iy] - pos[iy]) * kSpring;
+        vel[iz] += (orig[iz] - pos[iz]) * kSpring;
+      }
 
-      // Damping
-      vel[ix] *= damping;
-      vel[iy] *= damping;
-      vel[iz] *= damping;
+      // Damping (only meaningful for scatter / idle branches)
+      if (!forming) {
+        vel[ix] *= damping;
+        vel[iy] *= damping;
+        vel[iz] *= damping;
+      }
 
-      // Update position
-      pos[ix] += vel[ix];
-      pos[iy] += vel[iy];
-      pos[iz] += vel[iz];
+      // Update position (scatter / idle branches)
+      if (!forming) {
+        pos[ix] += vel[ix];
+        pos[iy] += vel[iy];
+        pos[iz] += vel[iz];
+      }
 
       // Clamp to cylinder (Y-axis rotation invariant for XZ radius)
       const r = Math.sqrt(pos[ix] * pos[ix] + pos[iz] * pos[iz]);
@@ -220,27 +264,47 @@ export default function ParticleLogo({ scrollRef }) {
     pointsGeoRef.current.attributes.position.needsUpdate = true;
   });
 
-  // Trigger a slow scatter: particles stay at the old logo shape but get
-  // outward velocities in random directions with random magnitudes, so they
-  // drift apart over ~0.9s (chaotic / messy). The form phase then pulls them
-  // into the new logo shape.
+  // Vortex scatter: every particle spirals outward around the Y axis (galaxy-like).
+  // Each particle's direction is based on its current XZ position so the whole cloud
+  // rotates coherently while expanding. Tangential swirl dominates to make the
+  // rotation clearly visible.
+  // Particles start at rest; the loop ramps velocity from 0 → target over SCATTER_RAMP_IN
+  // seconds (no abrupt kick).
   function triggerScatter() {
     scatterTimerRef.current = SCATTER_DURATION;
     formingRef.current = false;
+    const pos = pointsGeoRef.current.attributes.position.array;
     const vel = velocitiesRef.current;
+    const target = scatterTargetRef.current;
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const ix = i * 3, iy = ix + 1, iz = ix + 2;
-      // uniform random unit vector on a sphere
-      const u = Math.random() * 2 - 1;
-      const v = Math.random() * Math.PI * 2;
-      const s = Math.sqrt(1 - u * u);
-      const dx = s * Math.cos(v);
-      const dy = u;
-      const dz = s * Math.sin(v);
-      const speed = SCATTER_SPEED_MIN + Math.random() * (SCATTER_SPEED_MAX - SCATTER_SPEED_MIN);
-      vel[ix] = dx * speed;
-      vel[iy] = dy * speed;
-      vel[iz] = dz * speed;
+      const x = pos[ix], z = pos[iz];
+      const horizR = Math.sqrt(x * x + z * z);
+      // radial direction (outward from Y axis)
+      let radX, radZ;
+      if (horizR > 0.001) {
+        radX = x / horizR;
+        radZ = z / horizR;
+      } else {
+        // particle sits on the Y axis — pick a random radial direction
+        const a = Math.random() * Math.PI * 2;
+        radX = Math.cos(a);
+        radZ = Math.sin(a);
+      }
+      // tangential direction in XZ (perpendicular to rad, rotates around Y)
+      const tanX = -radZ;
+      const tanZ = radX;
+
+      const radialSpeed = (SCATTER_SPEED_MIN + Math.random() * (SCATTER_SPEED_MAX - SCATTER_SPEED_MIN)) * SCATTER_TARGET_BOOST;
+      const swirlSpeed = radialSpeed * SCATTER_SWIRL_RATIO;
+
+      target[ix] = radX * radialSpeed + tanX * swirlSpeed;
+      target[iy] = (Math.random() - 0.5) * SCATTER_Y_JITTER;
+      target[iz] = radZ * radialSpeed + tanZ * swirlSpeed;
+      // Start at rest — velocity will ramp up smoothly in the loop
+      vel[ix] = 0;
+      vel[iy] = 0;
+      vel[iz] = 0;
     }
     pointsGeoRef.current.attributes.position.needsUpdate = true;
   }
@@ -311,9 +375,41 @@ export default function ParticleLogo({ scrollRef }) {
           blending={THREE.AdditiveBlending}
         />
       </mesh>
+
+      {/* Gauge rings (thin horizontal hoops along the cylinder height) */}
+      {[-5, -3, -1, 1, 3, 5].map((y) => (
+        <mesh key={`gauge-${y}`} position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[6.9, 7.05, 64]} />
+          <meshBasicMaterial
+            color="#ffcc00"
+            transparent
+            opacity={0.42}
+            side={THREE.DoubleSide}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      ))}
+
+      {/* Compass tick marks on top ring (N/E/S/W) */}
+      {[0, Math.PI / 2, Math.PI, 3 * Math.PI / 2].map((angle, i) => (
+        <mesh
+          key={`tick-${i}`}
+          position={[Math.cos(angle) * 7, 6.0, Math.sin(angle) * 7]}
+        >
+          <boxGeometry args={[0.35, 0.35, 0.35]} />
+          <meshBasicMaterial
+            color="#ffcc00"
+            transparent
+            opacity={0.9}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }
 
 useGLTF.preload('/models/3d_model/3d-logo-axolotl.glb');
 useGLTF.preload('/models/3d_model/3d-logi-wa.glb');
+useGLTF.preload('/models/3d_model/3d-logo-instagram.glb');
+useGLTF.preload('/models/3d_model/3d-logo-gmail.glb');
