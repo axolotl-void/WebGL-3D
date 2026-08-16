@@ -1,11 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './Zone3Overlay.css';
 
-// ponytail: 4 kontak, masing-masing terikat ke index LOGOS 3D, urutan = wa.me andr |
-// git push; logo_id menunjuk idx di ParticleLogo.LOGOS (0=axolotl, 1=wa, 2=ig, 3=gmail).
+// ponytail: 4 kontak, masing-masing terikat ke index LOGOS 3D; logo_id menunjuk
+// idx di ParticleLogo.LOGOS (0=axolotl, 1=wa, 2=ig, 3=gmail). Urutan: GITHUB
+// dulu (chip 01) supaya saat masuk Zone 3 yang pertama dilihat = GitHub card.
 const CONTACTS_DATA = [
   {
     id: '01',
+    name: 'GITHUB',
+    short: 'GITHUB',
+    type: 'CODE REPOSITORY',
+    handle: '@axolotl-void',
+    desc: 'Semua source code & open-source project — jelajahi, fork, kontribusi.',
+    tags: ['REPO', 'OPEN SOURCE', 'PORTFOLIO'],
+    logo: 0,
+    href: 'https://github.com/axolotl-void',
+    priority: 'KODE',
+    response: '≤ 24 JAM',
+    accent: '#00d2ff',
+    btn: 'LIHAT GITHUB'
+  },
+  {
+    id: '02',
     name: 'WHATSAPP',
     short: 'WA',
     type: 'INSTANT MESSAGING',
@@ -20,7 +36,7 @@ const CONTACTS_DATA = [
     btn: 'CHAT DI WHATSAPP'
   },
   {
-    id: '02',
+    id: '03',
     name: 'GMAIL',
     short: 'GMAIL',
     type: 'E-MAIL / SURAT RESMI',
@@ -35,7 +51,7 @@ const CONTACTS_DATA = [
     btn: 'KIRIM E-MAIL'
   },
   {
-    id: '03',
+    id: '04',
     name: 'INSTAGRAM',
     short: 'IG',
     type: 'SOCIAL MEDIA',
@@ -48,21 +64,6 @@ const CONTACTS_DATA = [
     response: '24–48 JAM',
     accent: '#E4405F',
     btn: 'BUKA INSTAGRAM'
-  },
-  {
-    id: '04',
-    name: 'GITHUB',
-    short: 'GITHUB',
-    type: 'CODE REPOSITORY',
-    handle: '@axolotl-void',
-    desc: 'Semua source code & open-source project — jelajahi, fork, kontribusi.',
-    tags: ['REPO', 'OPEN SOURCE', 'PORTFOLIO'],
-    logo: 0,
-    href: 'https://github.com/axolotl-void',
-    priority: 'KODE',
-    response: '≤ 24 JAM',
-    accent: '#00d2ff',
-    btn: 'LIHAT GITHUB'
   }
 ];
 

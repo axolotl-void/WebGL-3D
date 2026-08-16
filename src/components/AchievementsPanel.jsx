@@ -162,7 +162,7 @@ export default function AchievementsPanel() {
 
   return (
     <div className={`id-backdrop ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
-      <div className={`id-panel ${isClosing ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+      <div className={`id-panel ach-panel ${isClosing ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="id-corner tl" />
         <div className="id-corner tr" />
         <div className="id-corner bl" />

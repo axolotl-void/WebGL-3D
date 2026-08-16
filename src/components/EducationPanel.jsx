@@ -215,7 +215,7 @@ export default function EducationPanel() {
             </div>
             <div className="edu-grid-card-content">
               <span className="edu-grid-lbl">CURRENT STATUS</span>
-              <h4 className="edu-grid-val">SEMESTER 6</h4>
+              <h4 className="edu-grid-val">SEMESTER 7</h4>
               <span className="edu-grid-subval">Aktif</span>
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function EducationPanel() {
             </div>
             <div className="edu-grid-card-content">
               <span className="edu-grid-lbl">GPA</span>
-              <h4 className="edu-grid-val">3,67</h4>
+              <h4 className="edu-grid-val">3,70</h4>
               <span className="edu-grid-subval">Sangat Baik</span>
             </div>
           </div>
