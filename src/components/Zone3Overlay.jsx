@@ -67,9 +67,64 @@ const CONTACTS_DATA = [
   }
 ];
 
+// 5 proyek asli (Rancangan 11) — ditampilkan saat mode 'project'.
+const PROJECTS_DATA = [
+  {
+    id: '01',
+    title: 'AXOLOTL VOID',
+    category: 'WEBGL / REACT THREE FIBER',
+    desc: 'Immersive WebGL portfolio with scroll-driven 3D scene transitions, custom GLSL portal shaders, and interactive particle-based logo physics.',
+    tech: ['R3F', 'THREE.JS', 'GLSL', 'GSAP'],
+    status: 'LIVE',
+    year: '2026',
+    github: 'https://github.com/axolotl-void'
+  },
+  {
+    id: '02',
+    title: 'INPETA WEB GIS',
+    category: 'REACT / LEAFLET / GIS',
+    desc: 'Re-engineered Web GIS platform for DISKOMINSA UPTD Statistik Aceh — interactive Leaflet maps, presentation web, and a full REST API backend.',
+    tech: ['REACT', 'LEAFLET', 'NODE.JS', 'REST API'],
+    status: 'DEPLOYED',
+    year: '2025',
+    github: 'https://github.com/axolotl-void/Web-InPeta-Fron-end'
+  },
+  {
+    id: '03',
+    title: 'SIM-LKPS',
+    category: 'NEXT.JS / ENTERPRISE',
+    desc: 'Sistem Informasi Manajemen Laporan Kinerja Program Studi UBBG — 31 tabel LKPS BAN-PT, 4 role akses, workflow validasi, upload bukti, dan export laporan.',
+    tech: ['NEXT.JS', 'TYPESCRIPT', 'PRISMA', 'POSTGRESQL'],
+    status: 'IN DEVELOPMENT',
+    year: '2026',
+    github: 'https://github.com/axolotl-void/SIM-LKPS'
+  },
+  {
+    id: '04',
+    title: 'WISUDA DIGITAL',
+    category: 'NEXT.JS / REALTIME QR',
+    desc: 'Campus graduation invitation validation with QR scanning — realtime attendance via Socket.io, 4 role access, and live attendance statistics.',
+    tech: ['NEXT.JS', 'SOCKET.IO', 'PRISMA', 'QR CODE'],
+    status: 'COMPLETED',
+    year: '2026',
+    github: 'https://github.com/axolotl-void/sistem-informasi-wisuda-digital'
+  },
+  {
+    id: '05',
+    title: 'LMS LAB 2.0',
+    category: 'FASTAPI / WEBSOCKET / IOT',
+    desc: 'Real-time Lab Management System for PC & AC control — FastAPI + WebSocket + SQLite, deployed on Raspberry Pi 4.',
+    tech: ['FASTAPI', 'PYTHON', 'WEBSOCKET', 'SQLITE'],
+    status: 'ACTIVE / v2.0',
+    year: '2026',
+    github: 'https://github.com/axolotl-void/LMS--Lab-Management-System-2.0'
+  }
+];
+
 export default function Zone3Overlay() {
   const rootRef = useRef(null);
   const visibleRef = useRef(false);
+  const [mode, setMode] = useState('contact');
   const [activeIdx, setActiveIdx] = useState(0);
 
   const playClickSfx = () => {
@@ -80,11 +135,29 @@ export default function Zone3Overlay() {
 
   // ponytail: chip + arrows both call goTo(idx) so HUD card and 3D logo stay in sync
   const goTo = (idx) => {
-    const next = (idx + CONTACTS_DATA.length) % CONTACTS_DATA.length;
+    const list = mode === 'project' ? PROJECTS_DATA : CONTACTS_DATA;
+    const next = (idx + list.length) % list.length;
     setActiveIdx(next);
-    window.__activeLogo = CONTACTS_DATA[next].logo;
+    if (mode === 'contact') {
+      window.__activeLogo = CONTACTS_DATA[next].logo;
+    }
     playClickSfx();
   };
+
+  // Mode switching is owned by UnifiedScene (fires 'zone-mode-change' in response
+  // to 'project-click'/'contact-click'). The overlay only mirrors that signal.
+  useEffect(() => {
+    const onModeChange = () => {
+      const next = window.__zoneMode === 'project' ? 'project' : 'contact';
+      setMode(next);
+      setActiveIdx(0);
+      if (next === 'contact') {
+        window.__activeLogo = CONTACTS_DATA[0].logo;
+      }
+    };
+    window.addEventListener('zone-mode-change', onModeChange);
+    return () => window.removeEventListener('zone-mode-change', onModeChange);
+  }, []);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -120,7 +193,8 @@ export default function Zone3Overlay() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const activeContact = CONTACTS_DATA[activeIdx];
+  const isProject = mode === 'project';
+  const active = isProject ? PROJECTS_DATA[activeIdx] : CONTACTS_DATA[activeIdx];
 
   return (
     <div className="zone3-overlay" ref={rootRef}>
@@ -138,7 +212,7 @@ export default function Zone3Overlay() {
           {/* Minimal Tech Header */}
           <div className="z3-hud-header">
             <div className="z3-hud-header-left">
-              <span className="z3-hud-module">03 / CONTACT ARRAY</span>
+              <span className="z3-hud-module">{isProject ? '03 / PROJECT ARCHIVE' : '03 / CONTACT ARRAY'}</span>
             </div>
             <div className="z3-hud-header-right">
               <span className="z3-hud-slashes">///</span>
@@ -146,50 +220,79 @@ export default function Zone3Overlay() {
             </div>
           </div>
 
-          {/* Contact Selector — 4 horizontal chips */}
+          {/* Selector — contact chips or project chips */}
           <div className="z3-chip-row">
-            {CONTACTS_DATA.map((c, idx) => (
-              <button
-                key={c.id}
-                className={`z3-project-chip ${activeIdx === idx ? 'active' : ''}`}
-                onClick={() => goTo(idx)}
-              >
-                [{c.id}] {c.short}
-              </button>
-            ))}
+            {isProject
+              ? PROJECTS_DATA.map((p, idx) => (
+                  <button
+                    key={p.id}
+                    className={`z3-project-chip ${activeIdx === idx ? 'active' : ''}`}
+                    onClick={() => goTo(idx)}
+                  >
+                    [{p.id}] {p.title}
+                  </button>
+                ))
+              : CONTACTS_DATA.map((c, idx) => (
+                  <button
+                    key={c.id}
+                    className={`z3-project-chip ${activeIdx === idx ? 'active' : ''}`}
+                    onClick={() => goTo(idx)}
+                  >
+                    [{c.id}] {c.short}
+                  </button>
+                ))}
           </div>
 
           {/* Compact Detail Card */}
           <div className="z3-detail-card">
             <div className="z3-detail-header">
-              <h2 className="z3-detail-title">{activeContact.name}</h2>
-              <div className="z3-detail-category">{activeContact.type}</div>
+              <h2 className="z3-detail-title">{isProject ? active.title : active.name}</h2>
+              <div className="z3-detail-category">{isProject ? active.category : active.type}</div>
             </div>
 
             {/* Spec grid */}
             <div className="z3-spec-grid">
-              <div className="z3-spec-box">
-                <span className="z3-spec-label">PRIORITY</span>
-                <span className="z3-spec-value green-text">{activeContact.priority}</span>
-              </div>
-              <div className="z3-spec-box">
-                <span className="z3-spec-label">RESPONSE_T</span>
-                <span className="z3-spec-value">{activeContact.response}</span>
-              </div>
-              <div className="z3-spec-box">
-                <span className="z3-spec-label">CHANNEL</span>
-                <span className="z3-spec-value accent" style={{ color: activeContact.accent }}>
-                  {activeContact.handle}
-                </span>
-              </div>
+              {isProject ? (
+                <>
+                  <div className="z3-spec-box">
+                    <span className="z3-spec-label">SYSTEM_STATUS</span>
+                    <span className="z3-spec-value green-text">{active.status}</span>
+                  </div>
+                  <div className="z3-spec-box">
+                    <span className="z3-spec-label">LAUNCH_YEAR</span>
+                    <span className="z3-spec-value">{active.year}</span>
+                  </div>
+                  <div className="z3-spec-box">
+                    <span className="z3-spec-label">SUBSYSTEM</span>
+                    <span className="z3-spec-value">03-{active.id}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="z3-spec-box">
+                    <span className="z3-spec-label">PRIORITY</span>
+                    <span className="z3-spec-value green-text">{active.priority}</span>
+                  </div>
+                  <div className="z3-spec-box">
+                    <span className="z3-spec-label">RESPONSE_T</span>
+                    <span className="z3-spec-value">{active.response}</span>
+                  </div>
+                  <div className="z3-spec-box">
+                    <span className="z3-spec-label">CHANNEL</span>
+                    <span className="z3-spec-value accent" style={{ color: active.accent }}>
+                      {active.handle}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Description */}
-            <p className="z3-detail-desc">{activeContact.desc}</p>
+            <p className="z3-detail-desc">{active.desc}</p>
 
             {/* Tags */}
             <div className="z3-tags-row">
-              {activeContact.tags.map((tag) => (
+              {(isProject ? active.tech : active.tags).map((tag) => (
                 <span key={tag} className="z3-tech-tag">{tag}</span>
               ))}
             </div>
@@ -199,13 +302,43 @@ export default function Zone3Overlay() {
               className="z3-action-btn"
               onClick={() => {
                 playClickSfx();
-                window.open(activeContact.href, '_blank', 'noopener,noreferrer');
+                if (isProject) {
+                  window.open(active.github, '_blank', 'noopener,noreferrer');
+                } else {
+                  window.open(active.href, '_blank', 'noopener,noreferrer');
+                }
               }}
             >
-              {activeContact.btn} <span className="z3-btn-arrow">›</span>
+              {isProject ? 'VIEW ON GITHUB' : active.btn} <span className="z3-btn-arrow">›</span>
             </button>
           </div>
         </div>
+
+        {/* Project → archive nav button (bottom-center, contact mode only) */}
+        {!isProject && (
+          <button
+            className="z3-nav-btn"
+            onClick={() => {
+              playClickSfx();
+              window.dispatchEvent(new Event('project-click'));
+            }}
+          >
+            PROJECT <span aria-hidden="true">›</span>
+          </button>
+        )}
+
+        {/* Back-to-contact nav button (bottom-center, project mode only) */}
+        {isProject && (
+          <button
+            className="z3-nav-btn"
+            onClick={() => {
+              playClickSfx();
+              window.dispatchEvent(new Event('contact-click'));
+            }}
+          >
+            [CONTACT] KEMBALI KE KONTAK
+          </button>
+        )}
       </div>
   );
 }

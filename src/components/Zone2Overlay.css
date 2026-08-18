@@ -370,3 +370,42 @@
     box-shadow: 0 0 16px var(--accent-cyan), 0 0 28px var(--accent-glow);
   }
 }
+
+/* ─────────── RESPONSIVE ─────────── */
+@media (max-width: 768px) {
+  .z2-left-panel {
+    left: 16px;
+    right: 16px;
+    top: 100px;
+    width: auto;
+    padding: 20px 18px;
+  }
+
+  .z2-panel-title {
+    font-size: 1.4rem;
+  }
+
+  .z2-panel-desc {
+    font-size: 0.72rem;
+    line-height: 1.5;
+  }
+
+  .z2-explore-btn {
+    bottom: 32px;
+    padding: 12px 24px;
+    font-size: 0.68rem;
+  }
+
+  .z2-3d-connector-container {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .z2-left-panel {
+    top: 80px;
+  }
+  .z2-panel-title {
+    font-size: 1.2rem;
+  }
+}

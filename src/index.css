@@ -9,6 +9,21 @@
   --font-display: 'Orbitron', sans-serif;
   --font-body: 'Inter', sans-serif;
   --border-glow: rgba(0, 210, 255, 0.15);
+
+  /* Fluid type — clamps collapse ke nilai tengah di desktop 1440px,
+     hanya adaptif di viewport ekstrem. UI desktop tidak berubah. */
+  --fs-xs:    clamp(0.58rem, 0.56rem + 0.1vw, 0.62rem);
+  --fs-sm:    clamp(0.68rem, 0.64rem + 0.15vw, 0.76rem);
+  --fs-md:    clamp(0.78rem, 0.72rem + 0.25vw, 0.9rem);
+  --fs-lg:    clamp(0.95rem, 0.85rem + 0.4vw, 1.15rem);
+  --fs-xl:    clamp(1.25rem, 1rem + 1vw, 1.5rem);
+  --fs-2xl:   clamp(1.8rem, 1.2rem + 2.5vw, 2.5rem);
+  --fs-hero:  clamp(2rem, 1rem + 4vw, 4rem);
+
+  /* Fluid spacing */
+  --space-panel-x: clamp(16px, 4vw, 48px);
+  --space-panel-y: clamp(20px, 6vh, 160px);
+  --panel-max-w:   clamp(320px, 45vw, 660px);
 }
 
 * {

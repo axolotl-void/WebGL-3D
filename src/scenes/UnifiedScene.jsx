@@ -138,6 +138,35 @@ const PORTAL_POS = [3.50, -3.10, -7.05];
 const PORTAL_SCALE = 0.0060;
 const PORTAL_ROT_Y = 4.60;
 
+// ── Zone 3 camera targets (CONTACT vs PROJECT) ──
+// ponytail: PROJECT_POS/PROJECT_ROT are temporary defaults — confirm real
+// coordinates via free cam (C) + KORDINAT panel, then overwrite these constants.
+const LOGO_POS = new THREE.Vector3(381.51, -0.5, -49.41);
+const CONTACT_POS = new THREE.Vector3(400.49, -0.37, -66.67);
+const CONTACT_ROT = new THREE.Quaternion().setFromEuler(new THREE.Euler(3.14, 1.41, -3.14));
+// ponytail: PROJECT is a computed lookAt toward the logo (not free-cam coords,
+// which kept landing in empty space). Guaranteed to frame the logo + island.
+const PROJECT_POS = new THREE.Vector3(381.51, 2.0, -90.0);
+const PROJECT_ROT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-3.0801, 0.0, -3.1416));
+
+// ── Zone scroll anchors (scroll ratios) ──
+// Scroll is natural now: window.scrollY drives targetProgress directly.
+// ZONE_ANCHORS now only feeds the EXPLORE button flight target.
+// ZONE_ANCHORS: [0]=hero, [1]=about/explore, [2]=contact.
+const ZONE_ANCHORS = [0.0, 0.62, 0.9];
+
+function animateScrollTo(targetY, duration = 5500) {
+  const startY = window.scrollY;
+  const start = performance.now();
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+  const step = (now) => {
+    const t = Math.min((now - start) / duration, 1);
+    window.scrollTo(0, startY + (targetY - startY) * easeOut(t));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 export default function UnifiedScene({
   debugScrollRef,
   debugPosRef,
@@ -161,6 +190,11 @@ export default function UnifiedScene({
   const targetScrollRef = useRef(0);
   const lastZoneRef = useRef(1); // Track current zone to trigger instant teleportation
   const isExploredRef = useRef(false);
+
+  // Zone 3 camera mode: 'contact' | 'project'. Swapped immediately on click;
+  // the white-flash shader (window.__projectTransition) hides the jump.
+  const zoneModeRef = useRef('contact');
+  const freeCamTargetSetRef = useRef(false); // aim OrbitControls at zone focus once per free-cam session
 
   // ponytail: window-level mouse tracking bypasses HTML overlay pointer-event capture
   const mouseRef = useRef({ x: 0, y: 0 });
@@ -186,6 +220,12 @@ export default function UnifiedScene({
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, []);
+
+  // Reset free-cam target flag on every toggle so the next free-cam session
+  // re-aims OrbitControls at the current zone's focus.
+  useEffect(() => {
+    freeCamTargetSetRef.current = false;
+  }, [isFreeCam]);
 
   // Intro camera constants (allocated once)
   const introCamStart = useMemo(() => new THREE.Vector3(0, 25, 40), []);
@@ -258,6 +298,16 @@ export default function UnifiedScene({
         rawScroll = maxClamp;
       }
 
+      // In PROJECT mode, lock the scroll to Zone 3 (>= 0.75). Scrolling up out
+      // of it returns to the CONTACT view instead of flying back to Zone 2.
+      if (zoneModeRef.current === 'project' && rawScroll < 0.75) {
+        window.scrollTo(0, 0.75 * max);
+        rawScroll = 0.75;
+        zoneModeRef.current = 'contact';
+        window.__zoneMode = 'contact';
+        window.dispatchEvent(new Event('zone-mode-change'));
+      }
+
       targetScrollRef.current = rawScroll;
     };
     window.addEventListener('scroll', onScroll);
@@ -271,17 +321,43 @@ export default function UnifiedScene({
     const handleExplore = () => {
       isExploredRef.current = true;
       window.__isExplored = true;
+      // Fly to the Zone 3 anchor (contact).
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      window.scrollTo({
-        top: 0.75 * max,
-        behavior: 'smooth'
-      });
+      animateScrollTo(ZONE_ANCHORS[2] * max);
     };
 
     window.addEventListener('explore-click', handleExplore);
     return () => {
       window.removeEventListener('explore-click', handleExplore);
       window.__isExplored = false;
+    };
+  }, []);
+
+  // Project ⇄ Contact mode switching (Zone 3). Starts the white-flash ramp;
+  // the actual camera swap happens at the peak of the flash inside useFrame.
+  useEffect(() => {
+    window.__zoneMode = 'contact';
+    window.__projectTransition = 0;
+
+    const fireMode = (mode) => {
+      zoneModeRef.current = mode;
+      window.__zoneMode = mode;
+      window.dispatchEvent(new Event('zone-mode-change'));
+      // Instant white flash covers the camera swap, then decays in useFrame.
+      window.__projectTransition = 1.0;
+      if (localStorage.getItem('isSoundOn') !== 'false') {
+        new Audio('/models/sound/suara-masuk-wrap.wav').play().catch(() => {});
+      }
+    };
+
+    const handleProject = () => fireMode('project');
+    const handleContact = () => fireMode('contact');
+
+    window.addEventListener('project-click', handleProject);
+    window.addEventListener('contact-click', handleContact);
+    return () => {
+      window.removeEventListener('project-click', handleProject);
+      window.removeEventListener('contact-click', handleContact);
     };
   }, []);
 
@@ -316,17 +392,34 @@ export default function UnifiedScene({
     // ═══════════════════════════════════════════════════════════════════════
     const maxClamp = isExploredRef.current ? 1.0 : 0.6245;
     const targetScroll = Math.min(targetScrollRef.current, maxClamp);
+    // ponytail: targetScrollRef comes straight from window.scrollY (natural scroll,
+    // no scroll interception). If the feel gets too "loose", ease the coupling
+    // here — e.g. targetScroll = Math.pow(targetScrollRef.current, 0.7) for a
+    // more cinematic glide. Camera lerp speed stays 0.015 (slow, per Rancangan 17).
     scrollRef.current = THREE.MathUtils.lerp(
       scrollRef.current,
       targetScroll,
-      0.025
+      0.015
     );
     const scroll = scrollRef.current;
 
-    // Reset explore status if user scrolls back above the entry threshold
-    if (scroll < 0.60 && isExploredRef.current) {
+    // Reset explore status if user scrolls back above the entry threshold.
+    // ponytail: use the RAW target ratio (targetScrollRef), not the lerped
+    // `scroll` — the lerp lags ~0.06 behind, so right after clicking EXPLORE
+    // (raw 0.6245, lerped ~0.56) this used to immediately undo the unlock.
+    if (targetScrollRef.current < 0.60 && isExploredRef.current) {
       isExploredRef.current = false;
       window.__isExplored = false;
+    }
+
+    // Reset PROJECT mode back to CONTACT whenever the user scrolls out of
+    // Zone 3, so re-entering Zone 3 always lands on the CONTACT view instead
+    // of staying stuck on the PROJECT camera.
+    if (scroll < 0.75 && zoneModeRef.current !== 'contact') {
+      zoneModeRef.current = 'contact';
+      window.__zoneMode = 'contact';
+      window.__projectTransition = 0;
+      window.dispatchEvent(new Event('zone-mode-change'));
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -380,15 +473,26 @@ export default function UnifiedScene({
     // Fade out mouse parallax as we leave Zone 1, restore in Zone 3
     const zone1Fade = 1.0 - ease(Math.min(Math.max((scroll - 0.15) / 0.15, 0), 1));
     const zone3Fade = ease(Math.min(Math.max((scroll - 0.75) / 0.10, 0), 1));
-    // ponytail: Zone 3 gets wider parallax (2.5/1.5) so the camera feels more responsive
-    const pMulX = zone3Fade > 0 ? 2.5 : 1.0;
-    const pMulY = zone3Fade > 0 ? 1.5 : 0.6;
+    // ponytail: Zone 3 gets wider parallax (2.5/1.5) so the camera feels more responsive.
+    // Project mode is calmer (1.5/0.8) so the detail card stays readable.
+    const isProjectMode = zoneModeRef.current === 'project';
+    const pMulX = zone3Fade > 0 ? (isProjectMode ? 1.5 : 2.5) : 1.0;
+    const pMulY = zone3Fade > 0 ? (isProjectMode ? 0.8 : 1.5) : 0.6;
     const parallaxFade = Math.max(zone1Fade, zone3Fade);
     const mouseX = mouseRef.current.x * pMulX * parallaxFade;
     const mouseY = mouseRef.current.y * pMulY * parallaxFade;
 
     // ponytail: subtle breathing idle so the camera never feels frozen
-    const breathY = scroll >= 0.75 ? Math.sin(time * 0.8) * 0.08 : 0;
+    const breathY = scroll >= 0.75 ? Math.sin(time * 0.8) * (isProjectMode ? 0.04 : 0.08) : 0;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROJECT ⇄ CONTACT FLASH DECAY
+    // The camera mode flips instantly in fireMode(); this just fades the
+    // white-flash shader back to 0 so the new view is revealed.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (window.__projectTransition > 0) {
+      window.__projectTransition = Math.max(window.__projectTransition - 0.02, 0);
+    }
 
     // The peak of the portal transition happens at scroll = 0.24.
     // We instantly teleport the camera to Zone 2 when scroll passes 0.24,
@@ -438,17 +542,33 @@ export default function UnifiedScene({
         }
       }
     } else {
-      // Phase 3: Freeze in front of Portal (scroll 0.75 to 1.00)
-      // (Bypassed & commented out for now as cameraScroll is locked at 0.6245, will be re-used when transitioning to Zone 3)
       // Phase 3: Zone 3 (scroll >= 0.75)
-      targetPos.set(400.49, -0.37, -66.67);
-      targetRot.setFromEuler(new THREE.Euler(3.14, 1.41, -3.14));
+      // Camera target follows the active mode: CONTACT array vs PROJECT archive.
+      if (zoneModeRef.current === 'project') {
+        targetPos.copy(PROJECT_POS);
+        targetRot.copy(PROJECT_ROT);
+      } else {
+        targetPos.copy(CONTACT_POS);
+        targetRot.copy(CONTACT_ROT);
+      }
     }
 
     if (isFreeCam) {
       // ═══════════════════════════════════════════════════════════════════════
       // FREE CAM MOVEMENT (WASD to fly, Q/E for Y translation)
       // ═══════════════════════════════════════════════════════════════════════
+      // Aim OrbitControls at the current zone's focus on the first frame, so
+      // drag/orbit centers on the logo (Zone 3) instead of origin (empty space).
+      if (controlsRef.current && !freeCamTargetSetRef.current) {
+        const focus = scroll >= 0.75
+          ? LOGO_POS
+          : scroll >= 0.24
+            ? new THREE.Vector3(0, -1, ZONE2_Z)
+            : new THREE.Vector3(0, 3, -12);
+        controlsRef.current.target.copy(focus);
+        freeCamTargetSetRef.current = true;
+      }
+
       const speed = 0.04;
       const prevPos = camera.position.clone();
 

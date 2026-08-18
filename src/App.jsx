@@ -25,7 +25,7 @@ function App() {
     <>
       {/* 3D WebGL Canvas Background Layer */}
       <div className="canvas-container">
-        <Canvas gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}>
+        <Canvas dpr={[1, 2]} gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}>
           
           <Suspense fallback={null}>
             <UnifiedScene 

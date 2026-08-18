@@ -101,7 +101,10 @@ class PortalTransitionImpl extends Effect {
   }
 
   update() {
-    this.uniforms.get('uProgress').value = window.__portalProgress || 0;
+    this.uniforms.get('uProgress').value = Math.max(
+      window.__portalProgress || 0,
+      window.__projectTransition || 0
+    );
   }
 }
 

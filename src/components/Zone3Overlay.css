@@ -20,7 +20,7 @@
 .z3-panel {
   position: absolute;
   right: 48px;
-  bottom: 140px;
+  top: 160px;
   width: 660px;
   max-height: 620px;
   background: rgba(2, 12, 30, 0.85);
@@ -297,6 +297,97 @@
   transform: translateY(0);
 }
 
+/* ── Nav Button (bottom-center) ── */
+.z3-nav-btn {
+  position: fixed;
+  left: 50%;
+  bottom: 48px;
+  transform: translateX(-50%);
+  z-index: 55;
+  font-family: var(--font-display, "Orbitron", sans-serif);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 14px 36px;
+  border: none;
+  background: transparent;
+  color: var(--text-main, #ffffff);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  clip-path: polygon(
+    12px 0%, 100% 0%, 100% calc(100% - 12px),
+    calc(100% - 12px) 100%, 0% 100%, 0% 12px
+  );
+  transition: color 0.25s ease, filter 0.25s ease, transform 0.1s ease, opacity 0.6s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Outer border gradient (mirrors .z2-explore-btn::before) */
+.z3-nav-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.5), rgba(0, 210, 255, 0.2));
+  clip-path: polygon(
+    12px 0%, 100% 0%, 100% calc(100% - 12px),
+    calc(100% - 12px) 100%, 0% 100%, 0% 12px
+  );
+  z-index: -2;
+  transition: background 0.25s ease;
+}
+
+/* Inner dark fill (mirrors .z2-explore-btn::after) */
+.z3-nav-btn::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: rgba(2, 10, 23, 0.85);
+  clip-path: polygon(
+    11px 0%, 100% 0%, 100% calc(100% - 11px),
+    calc(100% - 11px) 100%, 0% 100%, 0% 11px
+  );
+  z-index: -1;
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Visible state */
+.zone3-overlay.visible .z3-nav-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Hover: glow cyan + white gradient outer */
+.z3-nav-btn:hover {
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
+  filter: drop-shadow(0 0 12px rgba(0, 210, 255, 0.5));
+}
+.z3-nav-btn:hover::before {
+  background: linear-gradient(135deg, #ffffff, var(--accent-cyan, #00d2ff));
+}
+.z3-nav-btn:hover::after {
+  background: rgba(0, 210, 255, 0.15);
+  box-shadow: inset 0 0 12px rgba(0, 210, 255, 0.35);
+}
+
+/* Active/press */
+.z3-nav-btn:active {
+  transform: translateX(-50%) scale(0.96);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .z3-nav-btn {
+    bottom: 76px;
+    padding: 12px 28px;
+    font-size: 0.68rem;
+  }
+}
+
 /* ── Logo Switcher (‹ ›) ── */
 .z3-logo-switch {
   position: fixed;
@@ -371,5 +462,30 @@
   .z3-logo-switch {
     left: 16px;
     bottom: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .z3-panel {
+    padding: 14px 16px;
+  }
+  .z3-spec-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .z3-chip-row {
+    gap: 6px;
+  }
+  .z3-project-chip {
+    padding: 6px 10px;
+    font-size: 0.55rem;
+  }
+  .z3-detail-title {
+    font-size: 1.05rem;
+  }
+  .z3-nav-btn {
+    bottom: 24px;
+    padding: 10px 20px;
+    font-size: 0.65rem;
   }
 }
