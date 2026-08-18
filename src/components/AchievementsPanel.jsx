@@ -85,8 +85,8 @@ export default function AchievementsPanel() {
         </svg>
       ),
       infoText: 'Score: 90 / 100',
-      image: '/models/sertifikat/SERTIFIKAT-BTIK _3_11zon.jpg',
-      filename: 'SERTIFIKAT-BTIK _3_11zon.jpg',
+      image: '/models/sertifikat/SERTIFIKAT-BTIK_3_11zon.jpg',
+      filename: 'SERTIFIKAT-BTIK_3_11zon.jpg',
       theme: 'project-cyan',
       details: {
         category: 'Project',

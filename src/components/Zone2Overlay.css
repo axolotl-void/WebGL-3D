@@ -381,13 +381,17 @@
     padding: 20px 18px;
   }
 
+  .z2-panel-header { margin-bottom: 14px; }
+
   .z2-panel-title {
     font-size: 1.4rem;
+    margin-bottom: 12px;
   }
 
   .z2-panel-desc {
     font-size: 0.72rem;
     line-height: 1.5;
+    margin-bottom: 16px;
   }
 
   .z2-explore-btn {
@@ -404,8 +408,12 @@
 @media (max-width: 480px) {
   .z2-left-panel {
     top: 80px;
+    padding: 16px 14px;
   }
   .z2-panel-title {
     font-size: 1.2rem;
+  }
+  .z2-panel-desc {
+    font-size: 0.68rem;
   }
 }

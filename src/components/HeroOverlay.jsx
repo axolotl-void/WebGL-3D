@@ -229,12 +229,12 @@ export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
       const scrollRatio = maxScroll > 0 ? scrollY / maxScroll : 0;
 
-      // ponytail: map zones dynamically to section highlights
+      // ponytail: map zones dynamically to section highlights.
+      // Zone 3 = contact array (CONTACT) by default, project archive (PROJECTS)
+      // in project mode — mode is owned by UnifiedScene via window.__zoneMode.
       let currentSection = 'home';
-      if (scrollRatio >= 0.95) {
-        currentSection = 'contact';
-      } else if (scrollRatio >= 0.75) {
-        currentSection = 'projects';
+      if (scrollRatio >= 0.75) {
+        currentSection = window.__zoneMode === 'project' ? 'projects' : 'contact';
       } else if (scrollRatio >= 0.24) {
         currentSection = 'about';
       }
@@ -244,6 +244,7 @@ export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('scroll', handleScroll);
+    window.addEventListener('zone-mode-change', handleScroll);
 
     // Initial check to apply correct visibility state immediately on mount
     updateHeroPositionAndOpacity(null);
@@ -252,6 +253,7 @@ export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
       tl.kill();
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('zone-mode-change', handleScroll);
     };
   }, []);
 
@@ -305,6 +307,9 @@ export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
           YOGI<span className="ho-logo-suffix">{typedText}</span>
           <span className={`ho-logo-cursor ${showCursor ? '' : 'off'}`}>|</span>
         </a>
+        <button className="ho-menu-btn" aria-label="Menu">
+          <span /><span /><span />
+        </button>
         <div className="ho-nav-links">
           <a
             href="#home"

@@ -59,3 +59,13 @@ html, body, #root {
 body {
   cursor: default;
 }
+
+/* Scroll lock saat mode 'project' (Rancangan 22) — toggled via document.body.classList */
+body.project-mode {
+  overflow: hidden;
+}
+
+/* Optional: hide scrollbar visual saat locked */
+body.project-mode::-webkit-scrollbar {
+  display: none;
+}

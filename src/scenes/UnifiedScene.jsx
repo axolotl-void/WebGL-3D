@@ -298,14 +298,12 @@ export default function UnifiedScene({
         rawScroll = maxClamp;
       }
 
-      // In PROJECT mode, lock the scroll to Zone 3 (>= 0.75). Scrolling up out
-      // of it returns to the CONTACT view instead of flying back to Zone 2.
+      // In PROJECT mode, body scroll is locked via `body.project-mode` (Rancangan 22).
+      // Safety fallback: if scroll somehow dips below 0.75, clamp it back WITHOUT
+      // resetting mode — the only exit from PROJECT is the CONTACT button.
       if (zoneModeRef.current === 'project' && rawScroll < 0.75) {
         window.scrollTo(0, 0.75 * max);
         rawScroll = 0.75;
-        zoneModeRef.current = 'contact';
-        window.__zoneMode = 'contact';
-        window.dispatchEvent(new Event('zone-mode-change'));
       }
 
       targetScrollRef.current = rawScroll;
@@ -345,6 +343,14 @@ export default function UnifiedScene({
       window.dispatchEvent(new Event('zone-mode-change'));
       // Instant white flash covers the camera swap, then decays in useFrame.
       window.__projectTransition = 1.0;
+
+      // Lock/unlock body scroll (Rancangan 22): body.project-mode -> overflow hidden
+      if (mode === 'project') {
+        document.body.classList.add('project-mode');
+      } else {
+        document.body.classList.remove('project-mode');
+      }
+
       if (localStorage.getItem('isSoundOn') !== 'false') {
         new Audio('/models/sound/suara-masuk-wrap.wav').play().catch(() => {});
       }
@@ -358,6 +364,7 @@ export default function UnifiedScene({
     return () => {
       window.removeEventListener('project-click', handleProject);
       window.removeEventListener('contact-click', handleContact);
+      document.body.classList.remove('project-mode');
     };
   }, []);
 
@@ -412,15 +419,9 @@ export default function UnifiedScene({
       window.__isExplored = false;
     }
 
-    // Reset PROJECT mode back to CONTACT whenever the user scrolls out of
-    // Zone 3, so re-entering Zone 3 always lands on the CONTACT view instead
-    // of staying stuck on the PROJECT camera.
-    if (scroll < 0.75 && zoneModeRef.current !== 'contact') {
-      zoneModeRef.current = 'contact';
-      window.__zoneMode = 'contact';
-      window.__projectTransition = 0;
-      window.dispatchEvent(new Event('zone-mode-change'));
-    }
+    // (Rancangan 22) The ONLY exit from PROJECT mode is the CONTACT button.
+    // Body scroll is locked via `body.project-mode`, so scroll can't dip below
+    // 0.75 while in project mode — no scroll-based auto-reset needed here.
 
     // ═══════════════════════════════════════════════════════════════════════
     // INTRO ANIMATION (first ~5 seconds)

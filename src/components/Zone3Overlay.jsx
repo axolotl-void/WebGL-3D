@@ -198,7 +198,7 @@ export default function Zone3Overlay() {
 
   return (
     <div className="zone3-overlay" ref={rootRef}>
-        <div className="z3-panel">
+        <div className={`z3-panel ${isProject ? 'z3-panel--project' : ''}`}>
           {/* Decorative corner brackets */}
           <div className="z3-corner tl" />
           <div className="z3-corner tr" />
@@ -212,7 +212,7 @@ export default function Zone3Overlay() {
           {/* Minimal Tech Header */}
           <div className="z3-hud-header">
             <div className="z3-hud-header-left">
-              <span className="z3-hud-module">{isProject ? '03 / PROJECT ARCHIVE' : '03 / CONTACT ARRAY'}</span>
+              <span className="z3-hud-module">{isProject ? '04 / PROJECT ARCHIVE' : '03 / CONTACT ARRAY'}</span>
             </div>
             <div className="z3-hud-header-right">
               <span className="z3-hud-slashes">///</span>
@@ -220,98 +220,194 @@ export default function Zone3Overlay() {
             </div>
           </div>
 
-          {/* Selector — contact chips or project chips */}
-          <div className="z3-chip-row">
-            {isProject
-              ? PROJECTS_DATA.map((p, idx) => (
-                  <button
-                    key={p.id}
-                    className={`z3-project-chip ${activeIdx === idx ? 'active' : ''}`}
-                    onClick={() => goTo(idx)}
-                  >
-                    [{p.id}] {p.title}
-                  </button>
-                ))
-              : CONTACTS_DATA.map((c, idx) => (
-                  <button
-                    key={c.id}
-                    className={`z3-project-chip ${activeIdx === idx ? 'active' : ''}`}
-                    onClick={() => goTo(idx)}
-                  >
-                    [{c.id}] {c.short}
-                  </button>
-                ))}
-          </div>
-
-          {/* Compact Detail Card */}
-          <div className="z3-detail-card">
-            <div className="z3-detail-header">
-              <h2 className="z3-detail-title">{isProject ? active.title : active.name}</h2>
-              <div className="z3-detail-category">{isProject ? active.category : active.type}</div>
-            </div>
-
-            {/* Spec grid */}
-            <div className="z3-spec-grid">
-              {isProject ? (
-                <>
-                  <div className="z3-spec-box">
-                    <span className="z3-spec-label">SYSTEM_STATUS</span>
-                    <span className="z3-spec-value green-text">{active.status}</span>
-                  </div>
-                  <div className="z3-spec-box">
-                    <span className="z3-spec-label">LAUNCH_YEAR</span>
-                    <span className="z3-spec-value">{active.year}</span>
-                  </div>
-                  <div className="z3-spec-box">
-                    <span className="z3-spec-label">SUBSYSTEM</span>
-                    <span className="z3-spec-value">03-{active.id}</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="z3-spec-box">
-                    <span className="z3-spec-label">PRIORITY</span>
-                    <span className="z3-spec-value green-text">{active.priority}</span>
-                  </div>
-                  <div className="z3-spec-box">
-                    <span className="z3-spec-label">RESPONSE_T</span>
-                    <span className="z3-spec-value">{active.response}</span>
-                  </div>
-                  <div className="z3-spec-box">
-                    <span className="z3-spec-label">CHANNEL</span>
-                    <span className="z3-spec-value accent" style={{ color: active.accent }}>
-                      {active.handle}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Description */}
-            <p className="z3-detail-desc">{active.desc}</p>
-
-            {/* Tags */}
-            <div className="z3-tags-row">
-              {(isProject ? active.tech : active.tags).map((tag) => (
-                <span key={tag} className="z3-tech-tag">{tag}</span>
+          {/* Selector — contact chips (project mode pakai mission grid) */}
+          {!isProject && (
+            <div className="z3-chip-row">
+              {CONTACTS_DATA.map((c, idx) => (
+                <button
+                  key={c.id}
+                  className={`z3-project-chip ${activeIdx === idx ? 'active' : ''}`}
+                  onClick={() => goTo(idx)}
+                >
+                  [{c.id}] {c.short}
+                </button>
               ))}
             </div>
+          )}
 
-            {/* Action button */}
-            <button
-              className="z3-action-btn"
-              onClick={() => {
-                playClickSfx();
-                if (isProject) {
-                  window.open(active.github, '_blank', 'noopener,noreferrer');
-                } else {
+          {/* Project mode: Big Card + Preview (master-detail) */}
+          {isProject && (
+            <>
+              {/* Nav strip: 5 thumbnail nav */}
+              <div className="z3-project-nav-strip">
+                {PROJECTS_DATA.map((p, idx) => {
+                  const dotColor = {
+                    'LIVE': '#00ffaa',
+                    'DEPLOYED': '#00d2ff',
+                    'IN DEVELOPMENT': '#ffcc00',
+                    'COMPLETED': '#a78bfa',
+                    'ACTIVE / v2.0': '#10b981',
+                  }[p.status] || '#8da4c4';
+
+                  return (
+                    <button
+                      key={p.id}
+                      className={`z3-project-nav-item ${activeIdx === idx ? 'active' : ''}`}
+                      onClick={() => goTo(idx)}
+                      aria-label={`Select project ${p.title}`}
+                    >
+                      <span
+                        className="z3-pn-dot"
+                        style={{ background: dotColor, boxShadow: `0 0 6px ${dotColor}` }}
+                      />
+                      <span className="z3-pn-id">[{p.id}]</span>
+                      <span className="z3-pn-title">{p.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Master-detail: preview card + detail */}
+              <div className="z3-project-master-detail">
+                {/* LEFT: Big preview card */}
+                <button
+                  className="z3-project-preview-card"
+                  onClick={() => {
+                    playClickSfx();
+                    window.open(active.github, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <div className="z3-preview-frame">
+                    <div className="z3-preview-placeholder">
+                      <span className="z3-preview-icon">
+                        {active.id === '01' && '◈'}
+                        {active.id === '02' && '◉'}
+                        {active.id === '03' && '▣'}
+                        {active.id === '04' && '◇'}
+                        {active.id === '05' && '◐'}
+                      </span>
+                    </div>
+                    <div className="z3-preview-corner tl" />
+                    <div className="z3-preview-corner tr" />
+                    <div className="z3-preview-corner bl" />
+                    <div className="z3-preview-corner br" />
+                    <div className="z3-preview-overlay">
+                      <div className="z3-preview-overlay-title">{active.title}</div>
+                      <div className="z3-preview-overlay-cta">
+                        OPEN GITHUB <span aria-hidden="true">›</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="z3-preview-meta">
+                    <span className="z3-preview-id">[{active.id}]</span>
+                    <span className="z3-preview-year">{active.year}</span>
+                  </div>
+                </button>
+
+                {/* RIGHT: Detail panel */}
+                <div className="z3-project-detail">
+                  <div className="z3-detail-header">
+                    <h2 className="z3-detail-title">{active.title}</h2>
+                    <div className="z3-detail-category">{active.category}</div>
+                  </div>
+
+                  {/* Spec grid */}
+                  <div className="z3-spec-grid">
+                    <div className="z3-spec-box">
+                      <span className="z3-spec-label">SYSTEM_STATUS</span>
+                      <span className="z3-spec-value green-text">{active.status}</span>
+                    </div>
+                    <div className="z3-spec-box">
+                      <span className="z3-spec-label">LAUNCH_YEAR</span>
+                      <span className="z3-spec-value">{active.year}</span>
+                    </div>
+                    <div className="z3-spec-box">
+                      <span className="z3-spec-label">SUBSYSTEM</span>
+                      <span className="z3-spec-value">03-{active.id}</span>
+                    </div>
+                  </div>
+
+                  <p className="z3-detail-desc z3-detail-desc-full">{active.desc}</p>
+
+                  <div className="z3-tags-row">
+                    {active.tech.map((tag) => (
+                      <span key={tag} className="z3-tech-tag">{tag}</span>
+                    ))}
+                  </div>
+
+                  <div className="z3-project-actions">
+                    <button
+                      className="z3-action-btn z3-action-btn-primary"
+                      onClick={() => {
+                        playClickSfx();
+                        window.open(active.github, '_blank', 'noopener,noreferrer');
+                      }}
+                    >
+                      VIEW ON GITHUB <span className="z3-btn-arrow">›</span>
+                    </button>
+                    <button
+                      className="z3-action-btn z3-action-btn-secondary"
+                      onClick={() => {
+                        playClickSfx();
+                        navigator.clipboard.writeText(active.github).catch(() => {});
+                      }}
+                    >
+                      COPY LINK
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Contact mode detail card */}
+          {!isProject && (
+            <div className="z3-detail-card">
+              <div className="z3-detail-header">
+                <h2 className="z3-detail-title">{active.name}</h2>
+                <div className="z3-detail-category">{active.type}</div>
+              </div>
+
+              {/* Spec grid */}
+              <div className="z3-spec-grid">
+                <div className="z3-spec-box">
+                  <span className="z3-spec-label">PRIORITY</span>
+                  <span className="z3-spec-value green-text">{active.priority}</span>
+                </div>
+                <div className="z3-spec-box">
+                  <span className="z3-spec-label">RESPONSE_T</span>
+                  <span className="z3-spec-value">{active.response}</span>
+                </div>
+                <div className="z3-spec-box">
+                  <span className="z3-spec-label">CHANNEL</span>
+                  <span className="z3-spec-value accent" style={{ color: active.accent }}>
+                    {active.handle}
+                  </span>
+                </div>
+              </div>
+
+              {/* Description */}
+              <p className="z3-detail-desc">{active.desc}</p>
+
+              {/* Tags */}
+              <div className="z3-tags-row">
+                {active.tags.map((tag) => (
+                  <span key={tag} className="z3-tech-tag">{tag}</span>
+                ))}
+              </div>
+
+              {/* Action button */}
+              <button
+                className="z3-action-btn"
+                onClick={() => {
+                  playClickSfx();
                   window.open(active.href, '_blank', 'noopener,noreferrer');
-                }
-              }}
-            >
-              {isProject ? 'VIEW ON GITHUB' : active.btn} <span className="z3-btn-arrow">›</span>
-            </button>
-          </div>
+                }}
+              >
+                {active.btn} <span className="z3-btn-arrow">›</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Project → archive nav button (bottom-center, contact mode only) */}
@@ -330,13 +426,13 @@ export default function Zone3Overlay() {
         {/* Back-to-contact nav button (bottom-center, project mode only) */}
         {isProject && (
           <button
-            className="z3-nav-btn"
+            className="z3-nav-btn back"
             onClick={() => {
               playClickSfx();
               window.dispatchEvent(new Event('contact-click'));
             }}
           >
-            [CONTACT] KEMBALI KE KONTAK
+            <span aria-hidden="true">‹</span> CONTACT
           </button>
         )}
       </div>

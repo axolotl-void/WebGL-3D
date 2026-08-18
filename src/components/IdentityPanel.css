@@ -2113,3 +2113,21 @@
   line-height: 1.3;
 }
 
+/* ─────────── MOBILE — MODAL (Rancangan 21) ─────────── */
+@media (max-width: 768px) {
+  .id-panel {
+    padding: 24px 20px !important;
+    width: 95%;
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+  .id-corner.tl, .id-corner.tr { top: 16px; }
+  .id-corner.bl, .id-corner.br { bottom: 16px; }
+  .id-corner.tl, .id-corner.bl { left: 16px; }
+  .id-corner.tr, .id-corner.br { right: 16px; }
+  .id-close { top: 16px; right: 16px; }
+  .id-title-white, .id-title-cyan { font-size: 1.6rem; }
+  .edu-large-title, .skills-large-title { font-size: 1.6rem; }
+  .ach-large-title { font-size: 1.3rem; }
+}
+
