@@ -205,9 +205,6 @@ export default function UnifiedScene({
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase();
       keysPressed.current[key] = true;
-      if (key === 'c') {
-        setIsFreeCam((prev) => !prev);
-      }
     };
     const handleKeyUp = (e) => {
       keysPressed.current[e.key.toLowerCase()] = false;
@@ -319,6 +316,9 @@ export default function UnifiedScene({
     const handleExplore = () => {
       isExploredRef.current = true;
       window.__isExplored = true;
+      // R27: mark intent so the <0.60 reset guard in useFrame doesn't undo
+      // this unlock while the nav/explore smooth-scroll is still below 0.60.
+      window.__exploreIntent = true;
       // Fly to the Zone 3 anchor (contact).
       const max = document.documentElement.scrollHeight - window.innerHeight;
       animateScrollTo(ZONE_ANCHORS[2] * max);
@@ -414,9 +414,18 @@ export default function UnifiedScene({
     // ponytail: use the RAW target ratio (targetScrollRef), not the lerped
     // `scroll` — the lerp lags ~0.06 behind, so right after clicking EXPLORE
     // (raw 0.6245, lerped ~0.56) this used to immediately undo the unlock.
-    if (targetScrollRef.current < 0.60 && isExploredRef.current) {
+    // R27: skip reset while __exploreIntent is set — nav hero from Zone 1
+    // dispatches explore-click then smooth-scrolls from ~0 to 0.85, dwelling
+    // several seconds below 0.60. Without intent flag, guard would refire
+    // every frame and undo unlock before scroll reached 0.60.
+    if (targetScrollRef.current < 0.60 && isExploredRef.current && !window.__exploreIntent) {
       isExploredRef.current = false;
       window.__isExplored = false;
+    }
+    // Clear intent once raw scroll crosses 0.60 — guard can resume normally
+    // for genuine scroll-up (Zone 2 → Zone 1) re-locking.
+    if (window.__exploreIntent && targetScrollRef.current >= 0.60) {
+      window.__exploreIntent = false;
     }
 
     // (Rancangan 22) The ONLY exit from PROJECT mode is the CONTACT button.
