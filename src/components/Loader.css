@@ -1,62 +1,25 @@
 .loader-root {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: 99999;
   background: #0b0f19;
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden;
-  touch-action: none;
-  animation: loaderFadeOut 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
 }
 
-@keyframes loaderFadeOut {
-  to {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-  }
+.loader-root.loaded {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .loader-iframe {
-  width: min(90vw, 90vh, 600px);
-  height: min(90vw, 90vh, 600px);
-  aspect-ratio: 1 / 1;
+  width: min(80vw, 80vh, 600px);
+  height: min(80vw, 80vh, 600px);
   border: 0;
-  pointer-events: none;
   background: transparent;
-}
-
-/* Screen-reader-only progressbar — visually hidden but accessible */
-.loader-progressbar-sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-@media (max-width: 600px) {
-  .loader-iframe {
-    width: min(80vw, 80vh, 400px);
-    height: min(80vw, 80vh, 400px);
-  }
-}
-
-@media (max-height: 500px) and (orientation: landscape) {
-  .loader-iframe {
-    width: min(60vw, 60vh, 400px);
-    height: min(60vw, 60vh, 400px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .loader-iframe {
-    display: none;
-  }
 }
