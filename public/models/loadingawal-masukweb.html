@@ -205,14 +205,5 @@
         </div>
     </div>
 
-    <script>
-        // Efek interaktif ringan: rotasi sedikit mengikuti posisi kursor mouse
-        const stage = document.querySelector('.stage');
-        window.addEventListener('mousemove', (e) => {
-            const x = (e.clientX / window.innerWidth - 0.5) * 20;
-            const y = (e.clientY / window.innerHeight - 0.5) * 20;
-            stage.style.transform = `rotateY(${x}deg) rotateX(${-y}deg)`;
-        });
-    </script>
-</body>
+    </body>
 </html>
