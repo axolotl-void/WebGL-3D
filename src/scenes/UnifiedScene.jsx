@@ -172,7 +172,8 @@ export default function UnifiedScene({
   debugPosRef,
   debugRotRef,
   debugZoneRef,
-  debugFreeCamRef
+  debugFreeCamRef,
+  onAssetsReady
 }) {
   const { camera } = useThree();
   const cubeGroupRef = useRef();
@@ -199,6 +200,15 @@ export default function UnifiedScene({
   // ponytail: window-level mouse tracking bypasses HTML overlay pointer-event capture
   const mouseRef = useRef({ x: 0, y: 0 });
   const mouseTargetRef = useRef({ x: 0, y: 0 });
+
+  // Phase 4 (Rancangan 28): UnifiedScene only mounts after Suspense resolves all
+  // GLB assets, so a mount effect is a reliable "assets ready" signal. Small delay
+  // lets the first frame rasterize before the loader considers the app ready.
+  useEffect(() => {
+    if (!onAssetsReady) return;
+    const t = setTimeout(() => onAssetsReady(), 50);
+    return () => clearTimeout(t);
+  }, [onAssetsReady]);
 
   // Set up keyboard listeners for free cam movement
   useEffect(() => {

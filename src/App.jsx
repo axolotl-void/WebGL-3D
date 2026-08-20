@@ -1,4 +1,4 @@
-import { Suspense, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import UnifiedScene from './scenes/UnifiedScene';
@@ -10,10 +10,18 @@ import EducationPanel from './components/EducationPanel';
 import SkillsPanel from './components/SkillsPanel';
 import AchievementsPanel from './components/AchievementsPanel';
 import Zone3Overlay from './components/Zone3Overlay';
+import Loader from './components/Loader';
 import './App.css';
 
 function App() {
   const [showDebugConsole, setShowDebugConsole] = useState(false);
+
+  // Loader phase signals (Rancangan 28)
+  const [fontsReady, setFontsReady] = useState(false);
+  const [canvasReady, setCanvasReady] = useState(false);
+  const [assetsReady, setAssetsReady] = useState(false);
+  const [introReady, setIntroReady] = useState(false);
+
   // Debug HUD Refs declared outside Canvas to avoid 3D projection shaking and rendering drops
   const debugScrollRef = useRef(null);
   const debugPosRef = useRef(null);
@@ -21,11 +29,59 @@ function App() {
   const debugZoneRef = useRef(null);
   const debugFreeCamRef = useRef(null);
 
+  // Phase 2: fonts.ready (fallback timeout 8s kalau API hang)
+  useEffect(() => {
+    let fallbackTimer;
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        setFontsReady(true);
+        clearTimeout(fallbackTimer);
+      });
+      fallbackTimer = setTimeout(() => setFontsReady(true), 8000);
+    } else {
+      setFontsReady(true);
+    }
+    return () => clearTimeout(fallbackTimer);
+  }, []);
+
+  // Audio gesture after loader hidden — fires once on first pointerdown/keydown.
+  // NOTE: semua audio di app ini pakai `new Audio()` (programmatic), jadi
+  // `document.querySelector('audio')` selalu null dan efek ini no-op. Tetap
+  // di-include sesuai rancangan 28 v2 §4.3 — sebagai safety net kalau
+  // arsitektur audio berubah (misal ada elemen <audio> di-overlay-kan).
+  useEffect(() => {
+    if (!introReady) return;
+    const playOnce = () => {
+      const a = document.querySelector('audio');
+      if (a) a.play().catch(() => {});
+      window.removeEventListener('pointerdown', playOnce);
+      window.removeEventListener('keydown', playOnce);
+    };
+    window.addEventListener('pointerdown', playOnce);
+    window.addEventListener('keydown', playOnce);
+    return () => {
+      window.removeEventListener('pointerdown', playOnce);
+      window.removeEventListener('keydown', playOnce);
+    };
+  }, [introReady]);
+
   return (
     <>
+      {/* Loading screen — always mounted until all 5 phases complete */}
+      <Loader
+        fontsReady={fontsReady}
+        canvasReady={canvasReady}
+        assetsReady={assetsReady}
+        introReady={introReady}
+      />
+
       {/* 3D WebGL Canvas Background Layer */}
       <div className="canvas-container">
-        <Canvas dpr={[1, 2]} gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}>
+        <Canvas
+          dpr={[1, 2]}
+          gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+          onCreated={() => setCanvasReady(true)}
+        >
           
           <Suspense fallback={null}>
             <UnifiedScene 
@@ -34,6 +90,7 @@ function App() {
               debugRotRef={debugRotRef}
               debugZoneRef={debugZoneRef}
               debugFreeCamRef={debugFreeCamRef}
+              onAssetsReady={() => setAssetsReady(true)}
             />
           </Suspense>
 
@@ -54,6 +111,7 @@ function App() {
       <HeroOverlay 
         showDebugConsole={showDebugConsole}
         onToggleDebug={() => setShowDebugConsole(prev => !prev)}
+        onIntroStart={() => setIntroReady(true)}
       />
       <Zone2Overlay />
       <Zone3Overlay />

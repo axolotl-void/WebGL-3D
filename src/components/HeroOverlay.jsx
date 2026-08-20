@@ -9,7 +9,7 @@ const LOGO_SUFFIXES = [
   '.DEV',
 ];
 
-export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
+export default function HeroOverlay({ showDebugConsole, onToggleDebug, onIntroStart }) {
   const rootRef = useRef(null);
   const [typedText, setTypedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
@@ -146,7 +146,13 @@ export default function HeroOverlay({ showDebugConsole, onToggleDebug }) {
     gsap.set(buttons, { opacity: 0, y: 20 });
     gsap.set(statusBar, { opacity: 0, y: 15 });
 
-    const tl = gsap.timeline({ delay: 0.3 });
+    const tl = gsap.timeline({
+      delay: 0.3,
+      onStart: () => {
+        // Phase 5 (Rancangan 28): intro animation started
+        if (onIntroStart) onIntroStart();
+      },
+    });
 
     tl.to(navbar, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 0);
     tl.to(skillItems, { opacity: 1, x: 0, duration: 0.6, ease: 'power2.out', stagger: 0.1 }, 0.3);
